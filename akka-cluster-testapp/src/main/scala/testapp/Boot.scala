@@ -20,9 +20,9 @@ class Boot extends Bootable {
   def startup(): Unit = {
     val stackId = System.getProperty("ops-stack-id")
     val selfHostName = InetAddress.getLocalHost.getHostName
-    val (selfIp, seedNodesStr) = {
+    val conf =
       if (stackId eq null)
-        (InetAddress.getLocalHost.getHostAddress, "")
+        ConfigFactory.load
       else {
         val instances = opsInstances(stackId).sortBy(_.getHostname)
         val ips = instances.take(5).map { i ⇒
@@ -33,14 +33,13 @@ class Boot extends Bootable {
         require(selfIp.nonEmpty, s"Couldn't find my own [${selfHostName}] private ip in list of instances [${instances}]")
         val seedNodesStr = ips.map("akka.tcp://TestApp@" + _ + ":2552").mkString("\"", "\",\"", "\"")
         (selfIp.get, seedNodesStr)
-      }
-    }
-    log.info(s"[${selfHostName}/${selfIp}] starting with seed-nodes=[${seedNodesStr}]")
 
-    val conf = ConfigFactory.parseString(s"""
-        akka.remote.netty.tcp.hostname="${selfIp}"
-        akka.cluster.seed-nodes=[${seedNodesStr}]
-        """).withFallback(ConfigFactory.load)
+        log.info(s"[${selfHostName}/${selfIp}] starting with OpsWorks seed-nodes=[${seedNodesStr}]")
+        ConfigFactory.parseString(s"""
+          akka.remote.netty.tcp.hostname="${selfIp}"
+          akka.cluster.seed-nodes=[${seedNodesStr}]
+          """).withFallback(ConfigFactory.load)
+      }
 
     system = ActorSystem("TestApp", conf)
     val cluster = Cluster(system)

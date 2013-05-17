@@ -19,18 +19,11 @@ class MetricsListener extends Actor with ActorLogging {
   override def postStop(): Unit =
     cluster.unsubscribe(self)
 
-  var t = System.nanoTime
-
   def receive = {
     case ClusterMetricsChanged(clusterMetrics) ⇒
-      // FIXME we should publish ClusterMetricsChanged from Cluster periodically, instead of when it is received
-      val now = System.nanoTime
-      if ((now - t) >= 1000000000L) {
-        t = now
-        clusterMetrics.filter(_.address == selfAddress) foreach { nodeMetrics ⇒
-          logHeap(nodeMetrics)
-          logCpu(nodeMetrics)
-        }
+      clusterMetrics.filter(_.address == selfAddress) foreach { nodeMetrics ⇒
+        logHeap(nodeMetrics)
+        logCpu(nodeMetrics)
       }
     case state: CurrentClusterState ⇒ // ignore
   }
