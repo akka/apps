@@ -29,16 +29,17 @@ class Boot extends Bootable {
           if (i.getPrivateIp eq null) i.getHostname // not started, but should still be in the seed-nodes
           else i.getPrivateIp
         }
-        val selfIp = instances.collectFirst { case i if (i.getPrivateIp ne null) && (i.getHostname == selfHostName) ⇒ i.getPrivateIp }
-        require(selfIp.nonEmpty, s"Couldn't find my own [${selfHostName}] private ip in list of instances [${instances}]")
-        val seedNodesStr = ips.map("akka.tcp://TestApp@" + _ + ":2552").mkString("\"", "\",\"", "\"")
-        (selfIp.get, seedNodesStr)
-
-        log.info(s"[${selfHostName}/${selfIp}] starting with OpsWorks seed-nodes=[${seedNodesStr}]")
-        ConfigFactory.parseString(s"""
-          akka.remote.netty.tcp.hostname="${selfIp}"
-          akka.cluster.seed-nodes=[${seedNodesStr}]
-          """).withFallback(ConfigFactory.load)
+        instances.collectFirst { case i if (i.getPrivateIp ne null) && (i.getHostname == selfHostName) ⇒ i.getPrivateIp } match {
+          case None ⇒
+            throw new IllegalArgumentException(s"Couldn't find my own [${selfHostName}] private ip in list of instances [${instances}]")
+          case Some(selfIp) ⇒
+            val seedNodesStr = ips.map("akka.tcp://TestApp@" + _ + ":2552").mkString("\"", "\",\"", "\"")
+            log.info(s"[${selfHostName}/${selfIp}] starting with OpsWorks seed-nodes=[${seedNodesStr}]")
+            ConfigFactory.parseString(s"""
+              akka.remote.netty.tcp.hostname="${selfIp}"
+              akka.cluster.seed-nodes=[${seedNodesStr}]
+              """).withFallback(ConfigFactory.load)
+        }
       }
 
     system = ActorSystem("TestApp", conf)
