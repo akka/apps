@@ -7,29 +7,34 @@ import akka.remote.FailureDetector
 import scala.collection.immutable._
 import com.typesafe.config.Config
 import scala.concurrent.duration.{FiniteDuration, Duration}
-import java.util.concurrent.TimeUnit._
+import java.util.concurrent.atomic.AtomicInteger
 import akka.remote.FailureDetector.Clock
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
-import akka.event.Logging
+import akka.event.{EventStream, Logging}
 
 object CollectorFailureDetector {
   case class State(intervals: IndexedSeq[Long] = IndexedSeq.empty, lastTimestamp: Option[Long] = None)
+
+  val id = new AtomicInteger
 }
 
 class CollectorFailureDetector(
   val acceptablePause: Long,
   val slidingWindowSize: Int,
   val firstHeartbeat: Long,
-  val tag: String)(implicit clock: Clock) extends FailureDetector {
+  val tag: String,
+  val eventStream: EventStream)(implicit clock: Clock) extends FailureDetector {
   import CollectorFailureDetector._
 
-  def this(config: Config) =
+  def this(config: Config, ev: EventStream) =
     this(acceptablePause = config.getMilliseconds("acceptable-heartbeat-pause"),
     slidingWindowSize = config.getInt("sliding-window-size"),
     firstHeartbeat = config.getMilliseconds("heartbeat-interval"),
-    tag = config.getString("tag"))
+    tag = config.getString("tag"),
+    eventStream = ev)
 
+  private val log = Logging(eventStream, "heartbeat-logger-" + id.getAndIncrement)
   private val state = new AtomicReference[State](State())
 
   override def isAvailable: Boolean = isMonitoring && (state.get.lastTimestamp match {
@@ -42,7 +47,7 @@ class CollectorFailureDetector(
   override def heartbeat(): Unit = {
     val newState = enqueueInterval()
     if (newState.intervals.size == slidingWindowSize)
-      println(logText(newState.intervals))
+      log.info(logText(newState.intervals))
   }
 
   @tailrec
