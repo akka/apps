@@ -27,7 +27,7 @@ class MemberListener extends Actor with ActorLogging {
       log.info("Member is Up: [{}] in [{}] nodes cluster", member.address, nodes.size)
     case UnreachableMember(member) ⇒
       log.info("Member detected as unreachable: [{}] in [{}] nodes cluster", member.address, nodes.size)
-    case MemberRemoved(member) ⇒
+    case MemberRemoved(member, _) ⇒
       nodes -= member.address
       log.info("Member is Removed: [{}] in [{}] nodes cluster", member.address, nodes.size)
     case _: ClusterDomainEvent ⇒ // ignore
