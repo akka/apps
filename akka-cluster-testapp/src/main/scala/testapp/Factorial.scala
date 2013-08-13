@@ -22,7 +22,7 @@ class FactorialFrontend(n: Int, batchSize: Int) extends Actor with ActorLogging 
   override def preStart(): Unit = sendJobs()
 
   def receive = {
-    case factorial: BigInt ⇒
+    case factorial: String ⇒
       c += 1
       if (c == batchSize) {
         val d = (System.nanoTime - startTime) / 1000
@@ -60,7 +60,7 @@ class FactorialBackend extends Actor with ActorLogging {
 class FactorialWorker extends Actor with ActorLogging {
 
   def receive = {
-    case n: Int ⇒ sender ! factorial(n)
+    case n: Int ⇒ sender ! factorial(n).toString
   }
 
   def factorial(n: Int): BigInt = {
