@@ -88,7 +88,7 @@ class StatsClient extends Actor with ActorLogging {
 
   def receive = {
     case "tick" ⇒
-      mediator ! SendToAll("/user/stats/singleton", StatsJob("this is the text that will be analyzed"))
+      mediator ! SendToAll("/user/statsBackend/service", StatsJob("this is the text that will be analyzed"))
     case result: StatsResult ⇒
       if (okCount == 0)
         log.info("Stats result [{}], after [{}] failed attempts", result, failCount)
