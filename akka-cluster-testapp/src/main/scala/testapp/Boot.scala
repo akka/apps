@@ -48,14 +48,30 @@ class Boot extends Bootable {
     system.actorOf(Props[MemberListener], name = "members")
     system.actorOf(Props[MetricsListener], name = "metrics")
 
-    system.actorOf(ClusterSingletonManager.props(
-      singletonProps = _ ⇒ Props[StatsService], singletonName = "singleton",
-      terminationMessage = PoisonPill, role = Some("backend")),
-      name = "stats")
+    val factorialEnabled = conf.getBoolean("factorial.enabled")
+
+    if (cluster.selfRoles.contains("backend")) {
+      system.actorOf(ClusterSingletonManager.props(
+        singletonProps = _ ⇒ Props[StatsService], singletonName = "service",
+        terminationMessage = PoisonPill, role = Some("backend")),
+        name = "statsBackend")
+
+      if (factorialEnabled)
+        system.actorOf(Props[FactorialBackend], name = "factorialBackend")
+    }
 
     if (cluster.selfRoles.contains("frontend"))
       cluster.registerOnMemberUp {
         system.actorOf(Props[StatsClient], "statsClient")
+
+        if (factorialEnabled) {
+          val n = conf.getInt("factorial.n")
+          val batchSize = conf.getInt("factorial.batch-size")
+          system.actorOf(ClusterSingletonManager.props(
+            singletonProps = _ ⇒ Props(classOf[FactorialFrontend], n, batchSize), singletonName = "producer",
+            terminationMessage = PoisonPill, role = Some("frontend")),
+            name = "factorialFrontend")
+        }
       }
 
   }
