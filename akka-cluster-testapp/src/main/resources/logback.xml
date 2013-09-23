@@ -6,6 +6,7 @@
       <pattern>%date{ISO8601} %-5level [%X{akkaSource}] : %m%n</pattern>
     </encoder>
   </appender>
+  
   <appender name="R" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <File>var/logs/${HOSTNAME}_testapp.log</File>
     <encoder>
@@ -15,24 +16,38 @@
       <fileNamePattern>var/logs/${HOSTNAME}_testapp.log.%d{yyyy-MM-dd}</fileNamePattern>
     </rollingPolicy>
   </appender>
+  
   <appender name="metrics" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <File>var/logs/${HOSTNAME}_metrics.log</File>
+    <File>var/logs/${HOSTNAME}_testapp_metrics.log</File>
     <encoder>
       <pattern>%date{ISO8601} %-5level [%X{akkaSource}] : %m%n</pattern>
     </encoder>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>var/logs/${HOSTNAME}_metrics.log.%d{yyyy-MM-dd_HH}</fileNamePattern>
+      <fileNamePattern>var/logs/${HOSTNAME}_testapp_metrics.log.%d{yyyy-MM-dd_HH}</fileNamePattern>
     </rollingPolicy>
   </appender>
-
-  <!--
+  
+  <appender name="results" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <File>var/logs/${HOSTNAME}_testapp_results.log</File>
+    <encoder>
+      <pattern>%date{ISO8601} %-5level [%X{akkaSource}] : %m%n</pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>var/logs/${HOSTNAME}_testapp_results.log.%d{yyyy-MM-dd}</fileNamePattern>
+    </rollingPolicy>
+  </appender>
+  
   <logger name="testapp.MetricsListener" level="INFO" additivity="false">
     <appender-ref ref="metrics"/>
   </logger>
-  -->
+  
+  <logger name="testapp.ResultCollector" level="INFO" additivity="false">
+    <appender-ref ref="results"/>
+  </logger>
+  
 
   <root level="INFO">
-    <!-- <appender-ref ref="R"/>  -->
+    <appender-ref ref="R"/>
     <appender-ref ref="stdout"/>
   </root>
 </configuration>

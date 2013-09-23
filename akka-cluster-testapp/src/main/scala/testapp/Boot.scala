@@ -24,6 +24,7 @@ class Boot extends Bootable {
       if (stackId eq null)
         ConfigFactory.load
       else {
+        // running in EC2 with OpsWorks deployment
         val instances = opsInstances(stackId).sortBy(_.getHostname)
         val ips = instances.take(5).map { i ⇒
           if (i.getPrivateIp eq null) i.getHostname // not started, but should still be in the seed-nodes
@@ -44,6 +45,11 @@ class Boot extends Bootable {
 
     system = ActorSystem("TestApp", conf)
     val cluster = Cluster(system)
+
+    system.actorOf(ClusterSingletonManager.props(
+      singletonProps = _ ⇒ Props[ResultCollector], singletonName = "singleton",
+      terminationMessage = PoisonPill, role = None),
+      name = "resultsCollector")
 
     system.actorOf(Props[MemberListener], name = "members")
     system.actorOf(Props[MetricsListener], name = "metrics")
@@ -99,6 +105,12 @@ class Boot extends Bootable {
 
 }
 
+/**
+ * Can be started with
+ * -Dakka.remote.netty.tcp.port=2552 -Dakka.cluster.seed-nodes.1=akka.tcp://TestApp@10.192.14.250:2552
+ * and then
+ * -Dakka.remote.netty.tcp.port=0 -Dakka.cluster.seed-nodes.1=akka.tcp://TestApp@10.192.14.250:2552
+ */
 object Main {
   def main(args: Array[String]): Unit = {
     (new Boot).startup()
