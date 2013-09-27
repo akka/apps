@@ -53,12 +53,14 @@ class MemberListener extends Actor with ActorLogging {
     case UnreachableMember(member) ⇒
       unreachableTimestamps = unreachableTimestamps.updated(member.address, System.nanoTime())
       log.info("Member detected as unreachable: [{}] in [{}] nodes cluster", member.address, nodes.size)
-      report(NoticedUnreachable(member.address, cluster.selfAddress, nodes.size))
+      if (unreachableTimestamps.size < 10)
+        report(NoticedUnreachable(member.address, cluster.selfAddress, nodes.size))
     case ReachableMember(member) ⇒
       val duration = unreachableTimestamps.get(member.address) match {
         case Some(t) ⇒ (System.nanoTime() - t).nanos
         case None    ⇒ Duration.Undefined
       }
+      unreachableTimestamps = unreachableTimestamps - member.address
       log.info("Member detected as reachable again: [{}] in [{}] nodes cluster", member.address, nodes.size)
       report(NoticedReachable(member.address, cluster.selfAddress, duration, nodes.size))
     case evt @ MemberRemoved(member, _) ⇒
