@@ -52,7 +52,8 @@ class Boot extends Bootable {
       name = "resultsCollector")
 
     system.actorOf(Props[MemberListener], name = "members")
-    system.actorOf(Props[MetricsListener], name = "metrics")
+    if (cluster.settings.MetricsEnabled)
+      system.actorOf(Props[MetricsListener], name = "metrics")
 
     val factorialEnabled = conf.getBoolean("factorial.enabled")
 
