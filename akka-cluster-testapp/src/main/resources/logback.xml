@@ -46,7 +46,7 @@
   </logger>
   
 
-  <root level="INFO">
+  <root level="DEBUG">
     <appender-ref ref="R"/>
     <appender-ref ref="stdout"/>
   </root>

@@ -10,18 +10,18 @@
 PORT="0"
 LOG_Q="testapp-`uuidgen`"
 
-HOST="a4.moxie"
+HOST="$HOSTNAME"
 
-SEED1="a0.moxie:2552"
-SEED2="a2.moxie:2552"
-SEED3="a3.moxie:2554"
+SEED1="n0001:2552"
+SEED2="n0002:2552"
+SEED3="n0003:2552"
 
-LOG_DIR="logs"
+LOG_DIR="/home/patrik/akka-logs"
 
 AKKA_HOME="$(cd "$(cd "$(dirname "$0")"; pwd -P)"/..; pwd)"
 AKKA_CLASSPATH="$AKKA_HOME/config:$AKKA_HOME/lib/*"
 
-MEM_OPTS="-Xms128M -Xmx128M -XX:-HeapDumpOnOutOfMemoryError -XX:+UseParallelGC -XX:+UseCompressedOops"
+MEM_OPTS="-Xms1024M -Xmx1024M -XX:-HeapDumpOnOutOfMemoryError -XX:+UseParallelGC -XX:+UseCompressedOops"
 PRINT_GC_OPTS="-XX:+PrintGCDetails -XX:+PrintGCTimeStamps"
 # Only one JMX (port) per machine
 #JMX_OPTS="-Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
@@ -29,8 +29,9 @@ JMX_OPTS=""
 HOST_OPTS="-Dakka.remote.netty.tcp.hostname=$HOST -Dakka.cluster.seed-nodes.1=akka.tcp://TestApp@$SEED1 -Dakka.cluster.seed-nodes.2=akka.tcp://TestApp@$SEED2 -Dakka.cluster.seed-nodes.3=akka.tcp://TestApp@$SEED3"
 PORT_OPTS="-Dakka.remote.netty.tcp.port=$PORT"
 LOG_OPTS="-Dtestapp.log-dir=$LOG_DIR -Dtestapp.log-qualifier=$LOG_Q"
-JAVA_OPTS="$MEM_OPTS $PRINT_GC_OPTS $JMX_OPTS $HOST_OPTS $PORT_OPTS $LOG_OPTS"
-JAVA_HOME="/usr/lib/jvm/java-7-openjdk-amd64"
+DEBUG="-Dakka.loglevel=DEBUG -Dakka.log-dead-letters=1000 -Dakka.remote.log-received-messages=on -Dakka.remote.log-sent-messages=on"
+JAVA_OPTS="$MEM_OPTS $PRINT_GC_OPTS $JMX_OPTS $HOST_OPTS $PORT_OPTS $LOG_OPTS $DEBUG"
+JAVA_HOME="/usr"
 
 mkdir -p $LOG_DIR
 
