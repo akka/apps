@@ -5,7 +5,7 @@ import akka.sbt.AkkaKernelPlugin.{ Dist, outputDirectory, distJvmOptions, additi
 
 object AkkaClusterTestappBuild extends Build {
 
-  val akkaVersion = "2.3-20130916-200212"
+  val akkaVersion = "2.3-20130930-230919"
 
   lazy val akkaOpsworks = Project(
     id = "akka-cluster-testapp",

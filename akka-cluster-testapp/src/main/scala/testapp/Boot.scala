@@ -47,7 +47,7 @@ class Boot extends Bootable {
     val cluster = Cluster(system)
 
     system.actorOf(ClusterSingletonManager.props(
-      singletonProps = _ ⇒ Props[ResultCollector], singletonName = "singleton",
+      singletonProps = Props[ResultCollector], singletonName = "singleton",
       terminationMessage = PoisonPill, role = None),
       name = "resultsCollector")
 
@@ -59,7 +59,7 @@ class Boot extends Bootable {
 
     if (cluster.selfRoles.contains("backend")) {
       system.actorOf(ClusterSingletonManager.props(
-        singletonProps = _ ⇒ Props[StatsService], singletonName = "service",
+        singletonProps = Props[StatsService], singletonName = "service",
         terminationMessage = PoisonPill, role = Some("backend")),
         name = "statsBackend")
 
@@ -75,7 +75,7 @@ class Boot extends Bootable {
           val n = conf.getInt("factorial.n")
           val batchSize = conf.getInt("factorial.batch-size")
           system.actorOf(ClusterSingletonManager.props(
-            singletonProps = _ ⇒ Props(classOf[FactorialFrontend], n, batchSize), singletonName = "producer",
+            singletonProps = Props(classOf[FactorialFrontend], n, batchSize), singletonName = "producer",
             terminationMessage = PoisonPill, role = Some("frontend")),
             name = "factorialFrontend")
         }
