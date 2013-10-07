@@ -155,7 +155,7 @@ class ReportWhenAllConfirmedUp(startTime: Long, nodes: Set[Address]) extends Act
         case Terminated(`reporter`) ⇒ context.stop(self)
       }
     case ReceiveTimeout ⇒
-      log.error("Failed to report when all confirmed up [{}] - [{}]", selfAddress, itinerary.mkString(","))
+      log.error("Failed to report when all confirmed up [{}] in [{}] nodes cluster", selfAddress, nodes.size)
       context.stop(self)
   }
 
