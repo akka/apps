@@ -27,9 +27,9 @@ class ResultCollector extends Actor with ActorLogging {
 
   def handle: Receive = {
     case AddMemberTook(node, duration, size) ⇒
-      log.info("Adding node [{}] took [{}] ms in [{}] nodes cluster", node, duration.toMillis, size)
+      log.info("Adding node [{}] took [{}] ms in [{}] nodes cluster", node, duration.toMillis, size)
     case MemberUpConfirmedByAll(node, duration, size) ⇒
-      log.info("All confirmed Up of node [{}] took [{}] ms in [{}] nodes cluster", node, duration.toMillis, size)
+      log.info("All confirmed Up of node [{}] took [{}] ms in [{}] nodes cluster", node, duration.toMillis, size)
     case NoticedRemoved(evt, from, size) ⇒
       log.info("Node [{}] noticed [{}] in [{}] nodes cluster", from, evt, size)
     case NoticedUnreachable(node, from, size) ⇒
