@@ -45,7 +45,6 @@ akka.sublime-project
 akka.sublime-workspace
 akka.tmproj
 beanstalk/
-bin/
 var/
 data
 deploy/*.jar

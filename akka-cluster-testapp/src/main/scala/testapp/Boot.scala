@@ -24,6 +24,7 @@ class Boot extends Bootable {
       if (stackId eq null)
         ConfigFactory.load
       else {
+        // running in EC2 with OpsWorks deployment
         val instances = opsInstances(stackId).sortBy(_.getHostname)
         val ips = instances.take(5).map { i ⇒
           if (i.getPrivateIp eq null) i.getHostname // not started, but should still be in the seed-nodes
@@ -45,14 +46,20 @@ class Boot extends Bootable {
     system = ActorSystem("TestApp", conf)
     val cluster = Cluster(system)
 
+    system.actorOf(ClusterSingletonManager.props(
+      singletonProps = Props[ResultCollector], singletonName = "singleton",
+      terminationMessage = PoisonPill, role = None),
+      name = "resultsCollector")
+
     system.actorOf(Props[MemberListener], name = "members")
-    system.actorOf(Props[MetricsListener], name = "metrics")
+    if (cluster.settings.MetricsEnabled)
+      system.actorOf(Props[MetricsListener], name = "metrics")
 
     val factorialEnabled = conf.getBoolean("factorial.enabled")
 
     if (cluster.selfRoles.contains("backend")) {
       system.actorOf(ClusterSingletonManager.props(
-        singletonProps = _ ⇒ Props[StatsService], singletonName = "service",
+        singletonProps = Props[StatsService], singletonName = "service",
         terminationMessage = PoisonPill, role = Some("backend")),
         name = "statsBackend")
 
@@ -68,7 +75,7 @@ class Boot extends Bootable {
           val n = conf.getInt("factorial.n")
           val batchSize = conf.getInt("factorial.batch-size")
           system.actorOf(ClusterSingletonManager.props(
-            singletonProps = _ ⇒ Props(classOf[FactorialFrontend], n, batchSize), singletonName = "producer",
+            singletonProps = Props(classOf[FactorialFrontend], n, batchSize), singletonName = "producer",
             terminationMessage = PoisonPill, role = Some("frontend")),
             name = "factorialFrontend")
         }
@@ -99,6 +106,12 @@ class Boot extends Bootable {
 
 }
 
+/**
+ * Can be started with
+ * -Dakka.remote.netty.tcp.port=2552 -Dakka.cluster.seed-nodes.1=akka.tcp://TestApp@10.192.14.250:2552
+ * and then
+ * -Dakka.remote.netty.tcp.port=0 -Dakka.cluster.seed-nodes.1=akka.tcp://TestApp@10.192.14.250:2552
+ */
 object Main {
   def main(args: Array[String]): Unit = {
     (new Boot).startup()
