@@ -9,8 +9,6 @@ import com.amazonaws.services.opsworks.model.Instance
 import com.typesafe.config.ConfigFactory
 
 import akka.actor._
-import akka.cluster.Cluster
-import akka.contrib.pattern.ClusterSingletonManager
 import akka.kernel.Bootable
 
 class Boot extends Bootable {
@@ -44,42 +42,7 @@ class Boot extends Bootable {
       }
 
     system = ActorSystem("TestApp", conf)
-    val cluster = Cluster(system)
-
-    system.actorOf(ClusterSingletonManager.props(
-      singletonProps = Props[ResultCollector], singletonName = "singleton",
-      terminationMessage = PoisonPill, role = None),
-      name = "resultsCollector")
-
-    system.actorOf(Props[MemberListener], name = "members")
-    if (cluster.settings.MetricsEnabled)
-      system.actorOf(Props[MetricsListener], name = "metrics")
-
-    val factorialEnabled = conf.getBoolean("factorial.enabled")
-
-    if (cluster.selfRoles.contains("backend")) {
-      system.actorOf(ClusterSingletonManager.props(
-        singletonProps = Props[StatsService], singletonName = "service",
-        terminationMessage = PoisonPill, role = Some("backend")),
-        name = "statsBackend")
-
-      if (factorialEnabled)
-        system.actorOf(Props[FactorialBackend], name = "factorialBackend")
-    }
-
-    if (cluster.selfRoles.contains("frontend"))
-      cluster.registerOnMemberUp {
-        system.actorOf(Props[StatsClient], "statsClient")
-
-        if (factorialEnabled) {
-          val n = conf.getInt("factorial.n")
-          val batchSize = conf.getInt("factorial.batch-size")
-          system.actorOf(ClusterSingletonManager.props(
-            singletonProps = Props(classOf[FactorialFrontend], n, batchSize), singletonName = "producer",
-            terminationMessage = PoisonPill, role = Some("frontend")),
-            name = "factorialFrontend")
-        }
-      }
+    TestApp.start(system)
 
   }
 
