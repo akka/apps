@@ -5,7 +5,8 @@ import akka.sbt.AkkaKernelPlugin.{ Dist, outputDirectory, distJvmOptions, additi
 
 object AkkaClusterTestappBuild extends Build {
 
-  val akkaVersion = "2.3-20130930-230919"
+  val akkaVersion = "2.3-20131025-230950"
+  //val akkaVersion = "2.3-SNAPSHOT" // 3bdac87
 
   lazy val akkaOpsworks = Project(
     id = "akka-cluster-testapp",
@@ -18,7 +19,7 @@ object AkkaClusterTestappBuild extends Build {
       scalacOptions in Compile ++= Seq("-encoding", "UTF-8", "-target:jvm-1.6", "-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
       javacOptions in Compile ++= Seq("-source", "1.6", "-target", "1.6", "-Xlint:unchecked", "-Xlint:deprecation"),
       // this is only needed while we use timestamped snapshot version of akka
-      resolvers += "Typesafe Snapshot Repository" at "http://repo.typesafe.com/typesafe/snapshots/",      
+      resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/",      
       libraryDependencies ++= Seq(
         "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
         "com.typesafe.akka" %% "akka-contrib" % akkaVersion,
