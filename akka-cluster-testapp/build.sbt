@@ -1,5 +1,4 @@
-import com.typesafe.sbt.packager.Keys._
-import com.typesafe.sbt.SbtNativePackager._
+import NativePackagerHelper._
 
 val akkaVersion = "2.3.9"
 
@@ -23,17 +22,15 @@ libraryDependencies ++= Seq(
     "ch.qos.logback" % "logback-classic" % "1.0.7",
     "org.fusesource" % "sigar" % "1.6.4",
     "com.amazonaws" % "aws-java-sdk" % "1.4.2.1")
-      
+
 mainClass in (Compile, run) := Some("testapp.Main")
 
-packageArchetype.java_server
+enablePlugins(JavaServerAppPackaging)
 
 mappings in Universal ++= {
-  ((file("src/main/resources") * "*").get map { f => f -> ("conf/" + f.name) }) ++
-  ((file("sigar") * "*").get map { f => f -> ("lib/" + f.name) }) ++
-  ((file("bin") * "*").get map { f => f -> ("bin/" + f.name) })
+  directory("bin") ++
+  contentOf("src/main/resources").toMap.mapValues("conf/" + _) ++
+  contentOf("sigar").toMap.mapValues("lib/" + _)
 }
 
 scriptClasspath := Seq("../conf/") ++ scriptClasspath.value
-
-
