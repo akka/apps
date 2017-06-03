@@ -14,11 +14,25 @@
  * limitations under the License.
  */
 
-package apps
+package apps.pubsub
 
 import akka.actor._
+import akka.cluster.pubsub._
 
-object Main extends App {
-  val system = ActorSystem("ClusterSystem")
-  system.actorOf(pubsub.Driver.props(numberOfTopics = 100000, numberOfPublishers = 5000, numberOfSubscribers = 200000))
+object Publisher {
+  def props(topic: Int): Props = props(topic.toString)
+  def props(topic: String): Props = Props(new Publisher(topic))
+
+  case object Tick
+}
+class Publisher(topic: String) extends Actor {
+  import Publisher._
+
+  import DistributedPubSubMediator.Publish
+  // activate the extension
+  val mediator = DistributedPubSub(context.system).mediator
+
+  override def receive = {
+    case Tick =>mediator ! Publish(topic, Payload(42))
+  }
 }

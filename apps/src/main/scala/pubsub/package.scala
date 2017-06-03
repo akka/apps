@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-package apps
+package apps.pubsub
 
-import akka.actor._
-
-object Main extends App {
-  val system = ActorSystem("ClusterSystem")
-  system.actorOf(pubsub.Driver.props(numberOfTopics = 100000, numberOfPublishers = 5000, numberOfSubscribers = 200000))
-}
+case class Payload(i: Int)
