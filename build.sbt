@@ -16,6 +16,17 @@ lazy val apps = project
     )
   )
 
+lazy val sharding = project.enablePlugins(apps.plugins)
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.typesafe.akka" %% "akka-cluster-sharding" % Akka,
+      "com.typesafe.akka" %% "akka-persistence" % Akka,
+      "org.hdrhistogram" % "HdrHistogram" % "2.1.9",
+      "com.typesafe.akka" %% "akka-persistence-cassandra" % "0.54",
+      "com.github.romix.akka" %% "akka-kryo-serialization" % "0.5.1"
+    )
+  )
+
 inThisBuild(Seq(
   scalaVersion := "2.12.2",
   scalafmtVersion := "1.0.0-RC1",
