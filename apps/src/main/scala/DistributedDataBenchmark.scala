@@ -16,7 +16,7 @@
 
 package apps
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{ActorSystem, PoisonPill, Props}
 import akka.cluster.Cluster
 import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings}
 
@@ -32,7 +32,7 @@ object DistributedDataBenchmark extends App {
     system.actorOf(
       ClusterSingletonManager.props(
         singletonProps = Props[DDataBenchmarkCoordinator],
-        terminationMessage = DDataBenchmarkCoordinator.End,
+        terminationMessage = PoisonPill,
         settings = ClusterSingletonManagerSettings(system)),
       name = CoordinatorManager)
   }

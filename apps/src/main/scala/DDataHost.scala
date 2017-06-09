@@ -51,7 +51,7 @@ class DDataHost extends Actor {
     case Add(el) =>
       replicator ! Replicator.Update(DataKey, ORSet.empty[String], WriteLocal)(_ + el)
 
-    case c: Replicator.Changed[_] =>
+    case c @ Replicator.Changed(DataKey) =>
       coordinator ! Added
   }
 

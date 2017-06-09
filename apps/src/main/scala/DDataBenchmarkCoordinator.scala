@@ -17,32 +17,48 @@
 package apps
 
 import akka.actor.{Actor, ActorLogging}
+import org.HdrHistogram.Histogram
+
+import scala.util.Random
 
 object DDataBenchmarkCoordinator {
   case object Start
-  case object End
 }
 
 class DDataBenchmarkCoordinator() extends Actor with ActorLogging {
   import DDataBenchmarkCoordinator._
 
+  final val NumRounds = context.system.settings.config.getInt("bench.ddata.num-rounds")
+
+  val disseminationTiming = new Histogram(20 * 1000, 3)
   val NumNodes = context.system.settings.config.getInt("akka.cluster.min-nr-of-members")
 
   context.actorSelection("/user/" + DDataHost.Name) ! DDataHost.Add("stuff")
 
-  def receive = testing(NumNodes, System.currentTimeMillis())
+  def receive = testing(NumNodes, NumRounds, System.currentTimeMillis())
 
-  def testing(nodesLeft: Int, started: Long): Actor.Receive = {
+  def testing(nodesLeft: Int, roundsLeft: Int, started: Long): Actor.Receive = {
     case Start =>
-      context.actorSelection("/user/" + DDataHost.Name) ! DDataHost.Add("stuff")
+      ddataAdd(Random.nextString(8))
     case DDataHost.Added =>
       if (nodesLeft > 1)
-        context.become(testing(nodesLeft - 1, started))
+        context.become(testing(nodesLeft - 1, roundsLeft, started))
       else {
-        val timeTaken = System.currentTimeMillis() - started
-        log.info(s"DData disseminated to {} nodes in {} ms.", NumNodes, timeTaken)
+        val timeTakenMs = System.currentTimeMillis() - started
+        log.info(s"DData disseminated to {} nodes in {} ms.", NumNodes, timeTakenMs)
+        disseminationTiming.recordValue(timeTakenMs)
+
+        if (roundsLeft > 1) {
+          context.become(testing(NumNodes, roundsLeft - 1, System.currentTimeMillis()))
+          self ! Start
+        }
+        else {
+          disseminationTiming.outputPercentileDistribution(System.out, 1.0)
+        }
       }
   }
 
+  def ddataAdd(s: String) =
+    context.actorSelection("/user/" + DDataHost.Name) ! DDataHost.Add(s)
 
 }

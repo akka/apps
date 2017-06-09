@@ -3,7 +3,7 @@ val Akka = "2.5.2"
 lazy val `apps-root` = project
   .in(file("."))
   .aggregate(apps)
-  //.enablePlugins(ScalafmtPlugin)
+  .enablePlugins(ScalafmtPlugin)
 
 lazy val apps = project
   .enablePlugins(
@@ -12,9 +12,11 @@ lazy val apps = project
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster-sharding" % Akka,
-      "com.typesafe.akka" %% "akka-distributed-data" % Akka
+      "com.typesafe.akka" %% "akka-distributed-data" % Akka,
+      "org.hdrhistogram" % "HdrHistogram" % "2.1.9"
     )
   )
+  .enablePlugins(JavaAppPackaging)
 
 inThisBuild(Seq(
   scalaVersion := "2.12.2",
