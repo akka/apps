@@ -1,0 +1,8 @@
+source 'https://supermarket.chef.io'
+source "http://api.berkshelf.com"
+
+cookbook 'apt'
+cookbook 'docker'
+cookbook 'cassandra'
+cookbook 'cassandra-dse', '~> 4.3.0'
+

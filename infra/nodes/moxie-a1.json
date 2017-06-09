@@ -1,0 +1,7 @@
+{
+  "run_list": [
+  ],
+  "automatic": {
+    "ipaddress": "moxie-a1"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "jenkins_master",
+  "description": "",
+  "json_class": "Chef::Role",
+
+  "default_attributes": {
+  },
+
+  "run_list": [
+  ]
+}

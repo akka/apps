@@ -1,0 +1,27 @@
+{
+    "chef_environment": "_default", 
+    "ipaddress-internal": "10.132.0.8", 
+    "ipaddress": "35.187.171.147", 
+    "name": "akka-node-002", 
+    
+    "akka": {
+      "seed_nodes": ["10.132.0.7"],
+            
+      "multi_node": [
+        "10.132.0.7",
+        "10.132.0.8"
+      ]
+    },
+    
+    "java": {
+      "jdk_version": 8,
+      "oracle": {
+        "accept_oracle_download_terms": true
+      },
+      "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
+    },
+    "run_list": [
+        "role[benchmark]",
+        "role[gce-tools]"
+    ]
+}

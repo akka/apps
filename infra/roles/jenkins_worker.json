@@ -1,0 +1,15 @@
+{
+  "name": "jenkins_worker",
+  "description": "",
+  "json_class": "Chef::Role",
+
+  "default_attributes": {
+  },
+
+  "run_list": [
+    "recipe[sbt]",
+    "recipe[docker_simple]",
+    "recipe[wrk2]",
+    "recipe[ab]"
+  ]
+}

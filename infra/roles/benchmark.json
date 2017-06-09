@@ -1,0 +1,17 @@
+{
+  "name": "benchmark",
+  "description": "",
+  "json_class": "Chef::Role",
+
+  "default_attributes": {
+  },
+
+  "run_list": [
+    "recipe[akka-user]",
+    "recipe[sbt]",
+    "recipe[java-manual]",
+    "recipe[wrk2]",
+    "recipe[ab]",
+    "recipe[akka-linux-tweaks]"
+  ]
+}
