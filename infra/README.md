@@ -5,8 +5,14 @@ Dependencies
 ------------
 
 ```
+gem install bundler
 bundle install
+# install chef-dk: https://downloads.chef.io/chefdk
 chef gem install knife-solo
+
+sudo easy_install pip
+# install littlechef: https://github.com/tobami/littlechef
+pip install littlechef
 
 berks vendor
 ```
