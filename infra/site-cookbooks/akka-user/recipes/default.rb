@@ -41,6 +41,7 @@ end
 bash "clone akka" do
   code <<-EOH
     cd /home/akka
+    rm -rf akka
     git clone https://github.com/akka/akka
 
     chown -R akka.akka akka
