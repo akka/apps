@@ -49,3 +49,19 @@ bash 'update net.ipv4.tcp_wmem' do
     sysctl net.ipv4.tcp_wmem="4096 65536 16777216"
   EOH
 end
+
+template '/etc/security/limits.d/cassandra.conf' do 
+  source 'security-cassandra.conf'
+end
+
+bash 'zone_reclaim_mode' do
+  code <<-EOH
+    echo 0 > /proc/sys/vm/zone_reclaim_mode
+  EOH
+end
+
+bash "disable swap" do
+  code <<-EOH
+    swapoff --all
+  EOH
+end
