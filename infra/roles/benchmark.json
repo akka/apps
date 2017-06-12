@@ -8,7 +8,7 @@
 
   "run_list": [
     "recipe[akka-user]",
-    "recipe[sbt]",
+    "recipe[sbt-manual]",
     "recipe[java-manual]",
     "recipe[wrk2]",
     "recipe[ab]",

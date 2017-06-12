@@ -8,7 +8,7 @@
 
   "run_list": [
     "recipe[gce-logging-agent]",
-    "recipe[sbt]",
+    "recipe[sbt-manual]",
     "recipe[wrk2]",
     "recipe[ab]"
   ]
