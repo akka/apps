@@ -18,3 +18,9 @@ bash 'update net.core.wmem_max' do
     sysctl net.core.wmem_max=2097152
   EOH
 end
+
+bash "disable swap" do
+  code <<-EOH
+    swapoff --all
+  EOH
+end
