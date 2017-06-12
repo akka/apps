@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package apps
+package com.lightbend.akka.bench.ddata
 
 import akka.actor.{ActorSystem, PoisonPill, Props}
 import akka.cluster.Cluster

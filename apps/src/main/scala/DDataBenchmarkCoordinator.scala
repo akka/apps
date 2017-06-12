@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package apps
+package com.lightbend.akka.bench.ddata
 
 import akka.actor.{Actor, ActorLogging}
 import org.HdrHistogram.Histogram
 
 import scala.util.Random
+import scala.concurrent.duration._
 
 object DDataBenchmarkCoordinator {
   case object Start
@@ -30,12 +31,12 @@ class DDataBenchmarkCoordinator() extends Actor with ActorLogging {
 
   final val NumRounds = context.system.settings.config.getInt("bench.ddata.num-rounds")
 
-  val disseminationTiming = new Histogram(20 * 1000, 3)
+  val disseminationTiming = new Histogram(20 * 1000 * 1000, 3)
   val NumNodes = context.system.settings.config.getInt("akka.cluster.min-nr-of-members")
 
   context.actorSelection("/user/" + DDataHost.Name) ! DDataHost.Add("stuff")
 
-  def receive = testing(NumNodes, NumRounds, System.currentTimeMillis())
+  def receive = testing(NumNodes, NumRounds, System.nanoTime())
 
   def testing(nodesLeft: Int, roundsLeft: Int, started: Long): Actor.Receive = {
     case Start =>
@@ -44,21 +45,33 @@ class DDataBenchmarkCoordinator() extends Actor with ActorLogging {
       if (nodesLeft > 1)
         context.become(testing(nodesLeft - 1, roundsLeft, started))
       else {
-        val timeTakenMs = System.currentTimeMillis() - started
-        log.info(s"DData disseminated to {} nodes in {} ms.", NumNodes, timeTakenMs)
-        disseminationTiming.recordValue(timeTakenMs)
+        val timeTaken = (System.nanoTime() - started).nanos
+        log.info(s"DData disseminated to {} nodes in {} ms.", NumNodes, timeTaken.toMillis)
+        disseminationTiming.recordValue(timeTaken.toMicros)
 
         if (roundsLeft > 1) {
-          context.become(testing(NumNodes, roundsLeft - 1, System.currentTimeMillis()))
+          context.become(testing(NumNodes, roundsLeft - 1, System.nanoTime()))
           self ! Start
         }
         else {
-          disseminationTiming.outputPercentileDistribution(System.out, 1.0)
+          printStats()
         }
       }
   }
 
   def ddataAdd(s: String) =
     context.actorSelection("/user/" + DDataHost.Name) ! DDataHost.Add(s)
+
+  def printStats() = {
+    def percentile(p: Double): Double = disseminationTiming.getValueAtPercentile(p)
+
+    println(s"=== Distributed Data Benchmark " +
+      f"50%%ile: ${percentile(50.0)}%.0f µs, " +
+      f"90%%ile: ${percentile(90.0)}%.0f µs, " +
+      f"99%%ile: ${percentile(99.0)}%.0f µs")
+
+    println("Histogram of dissemination latencies in microseconds.")
+    disseminationTiming.outputPercentileDistribution(System.out, 1.0)
+  }
 
 }

@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-package apps
+package com.lightbend.akka.bench.ddata
 
-import akka.actor.{Actor}
+import java.util.concurrent.TimeUnit
+
+import akka.actor.Actor
 import akka.cluster.Cluster
-import akka.cluster.ddata.Replicator.WriteLocal
+import akka.cluster.ddata.Replicator.{WriteAll, WriteLocal, WriteMajority, WriteTo}
 import akka.cluster.ddata.{DistributedData, ORSet, ORSetKey, Replicator}
 import akka.cluster.singleton.{ClusterSingletonProxy, ClusterSingletonProxySettings}
+
+import scala.concurrent.duration._
 
 object DDataHost {
 
@@ -36,6 +40,14 @@ class DDataHost extends Actor {
 
   implicit val cluster = Cluster(context.system)
 
+  val writeTimeout = context.system.settings.config.getDuration("bench.ddata.write-timeout", TimeUnit.MICROSECONDS).micros
+  val writeConsistency = context.system.settings.config.getString("bench.ddata.write-consistency") match {
+    case "local" => WriteLocal
+    case "majority" => WriteMajority(writeTimeout)
+    case "all" => WriteAll(writeTimeout)
+    case numNodes => WriteTo(numNodes.toInt, writeTimeout)
+  }
+
   val coordinator = context.actorOf(
     ClusterSingletonProxy.props(
       singletonManagerPath = "/user/" + DistributedDataBenchmark.CoordinatorManager,
@@ -49,7 +61,7 @@ class DDataHost extends Actor {
 
   def receive = {
     case Add(el) =>
-      replicator ! Replicator.Update(DataKey, ORSet.empty[String], WriteLocal)(_ + el)
+      replicator ! Replicator.Update(DataKey, ORSet.empty[String], writeConsistency)(_ + el)
 
     case c @ Replicator.Changed(DataKey) =>
       coordinator ! Added
