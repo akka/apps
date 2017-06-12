@@ -8,6 +8,7 @@
 
   "run_list": [
     "recipe[java-manual]",
+    "recipe[cassandra-linux-tweaks]",
     "recipe[cassandra-manual]"
   ]
 }
