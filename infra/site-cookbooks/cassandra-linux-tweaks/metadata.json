@@ -1,7 +1,7 @@
 {
-  "name": "akka-linux-tweaks",
-  "description": "Installs/Configures gce-logging-agent",
-  "long_description": "akka linux tweaks\n=================\n\nall kinds of OS settings that make akka run nicer.\n",
+  "name": "cassandra-linux-tweaks",
+  "description": "Configures linux tweaks for running cassandra",
+  "long_description": "Configures linux tweaks for running cassandra\n",
   "maintainer": "YOUR_COMPANY_NAME",
   "maintainer_email": "YOUR_EMAIL",
   "license": "All rights reserved",
