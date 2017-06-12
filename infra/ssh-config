@@ -1,0 +1,54 @@
+host moxie-a0
+  HostName moxie.typesafe.com
+  port 5000
+  user local
+
+host moxie-a1
+  HostName moxie.typesafe.com
+  port 5001
+  user local
+
+host moxie-a2
+  HostName moxie.typesafe.com
+  port 5002
+  user local
+
+host moxie-a3
+  HostName moxie.typesafe.com
+  port 5003
+  user local
+
+host jenkins-moxie-a3
+  HostName moxie.typesafe.com
+  port 5003
+  user jenkinsakka
+
+host moxie-a4
+  HostName moxie.typesafe.com
+  port 5004
+  user local
+
+host moxie-a5
+  HostName moxie.typesafe.com
+  port 5005
+  user local
+
+host moxie-a6
+  HostName moxie.typesafe.com
+  port 5006
+  user local
+
+host moxie-a7
+  HostName moxie.typesafe.com
+  port 5007
+  user local
+
+host moxie-a8
+  HostName moxie.typesafe.com
+  port 5008
+  user local
+
+host moxie-a9
+  HostName moxie.typesafe.com
+  port 5009
+  user local

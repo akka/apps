@@ -1,0 +1,15 @@
+{
+  "name": "benchmark",
+  "description": "",
+  "json_class": "Chef::Role",
+
+  "default_attributes": {
+  },
+
+  "run_list": [
+    "recipe[gce-logging-agent]",
+    "recipe[sbt]",
+    "recipe[wrk2]",
+    "recipe[ab]"
+  ]
+}

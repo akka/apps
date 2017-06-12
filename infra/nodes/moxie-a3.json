@@ -1,0 +1,12 @@
+{
+    "automatic": {
+        "ipaddress": "moxie-a3"
+    }, 
+    "chef_environment": "_default", 
+    "ipaddress": "10.0.1.233", 
+    "name": "moxie-a3", 
+    "run_list": [
+        "role[akka_team]", 
+        "role[jenkins_worker]"
+    ]
+}

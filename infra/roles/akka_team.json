@@ -1,0 +1,11 @@
+{
+  "name": "akka_team",
+  "description": "Marks a node used by the Akka Team exclusively.",
+  "json_class": "Chef::Role",
+
+  "default_attributes": {
+  },
+
+  "run_list": [
+  ]
+}
