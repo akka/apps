@@ -14,6 +14,8 @@ prepare() {
 
     rm -rf $AERON_DIR
 
+    rm -f $MULTI_NODE_DIR/target/flight-recorder-*.afr
+
     mkdir -p /home/akka/aeron
     cd /home/akka/aeron
     wget -nc http://repo1.maven.org/maven2/io/aeron/aeron-all/1.2.5/aeron-all-1.2.5.jar
@@ -41,6 +43,8 @@ finish() {
     du -h /dev/shm/aeron-akka > $LOGS2/aeron-disk-usage.txt
   
     cp -R $AERON_DIR $LOGS2
+
+    cp $MULTI_NODE_DIR/target/flight-recorder-*.afr $LOGS2
   
     pkill -u akka vmstat
   
@@ -61,7 +65,8 @@ declare -r LOGS1="$LOGS_BASE/$IP1"
 
 declare -r AERON_DIR=/dev/shm/aeron-akka
 
-declare -r MEDIA_DRIVER_ARGS="-Xms1g -Xmx1g -XX:+UseCompressedOops -XX:MaxDirectMemorySize=256m -XX:ReservedCodeCacheSize=256m -XX:BiasedLockingStartupDelay=0 -Daeron.mtu.length=16384 -Daeron.socket.so_sndbuf=2097152 -Daeron.socket.so_rcvbuf=2097152 -Daeron.rcv.initial.window.length=2097152 -Dagrona.disable.bounds.checks=true"
+# -Daeron.threading.mode=DEDICATED -Daeron.sender.idle.strategy=org.agrona.concurrent.BusySpinIdleStrategy -Daeron.receiver.idle.strategy=org.agrona.concurrent.BusySpinIdleStrategy
+declare -r MEDIA_DRIVER_ARGS="-Daeron.threading.mode=SHARED_NETWORK -Xms1g -Xmx1g -XX:+UseCompressedOops -XX:MaxDirectMemorySize=256m -XX:ReservedCodeCacheSize=256m -XX:BiasedLockingStartupDelay=0 -Daeron.mtu.length=16384 -Daeron.socket.so_sndbuf=2097152 -Daeron.socket.so_rcvbuf=2097152 -Daeron.rcv.initial.window.length=2097152 -Dagrona.disable.bounds.checks=true"
 
 declare -r MULTI_NODE_DIR="/home/akka/tmp-akka-multi-node"
 declare -r MULTI_NODE_ARGS="-Dakka.test.multi-node=true -Dakka.test.multi-node.targetDirName=$MULTI_NODE_DIR -Dmultinode.Xms1024M -Dmultinode.Xmx1024M -Dmultinode.XX:+PrintGCDetails -Dmultinode.XX:+PrintGCTimeStamps -Dmultinode.XX:BiasedLockingStartupDelay=0 -Dmultinode.Daeron.mtu.length=16384 -Dmultinode.Daeron.rcv.buffer.length=16384 -Dmultinode.Daeron.socket.so_sndbuf=2097152 -Dmultinode.Daeron.socket.so_rcvbuf=2097152 -Dmultinode.Daeron.rcv.initial.window.length=2097152 -Dmultinode.Dagrona.disable.bounds.checks=true -Dmultinode.XX:+UseCompressedOops -Dmultinode.XX:MaxDirectMemorySize=256m -Dmultinode.XX:+UnlockDiagnosticVMOptions -Dmultinode.XX:GuaranteedSafepointInterval=300000"
@@ -76,7 +81,10 @@ mkdir -p $LOGS1
 
 # description of test 
 cd /home/akka/akka
-echo "$1" > $LOGS_BASE/readme.txt
+echo "$RGS" > $LOGS_BASE/readme.txt
+echo "MULTI_NODE_ARGS=$MULTI_NODE_ARGS" >> $LOGS_BASE/readme.txt
+echo "COMMON_ARGS=$COMMON_ARGS" >> $LOGS_BASE/readme.txt
+echo "MEDIA_DRIVER_ARGS=$MEDIA_DRIVER_ARGS" >> $LOGS_BASE/readme.txt
 git log -n 1 >> $LOGS_BASE/readme.txt
 
 # prepare all nodes
@@ -87,10 +95,11 @@ done
 sleep 10
 
 # run the tests ------------------------------------------
-echo "running test, log: $LOGS1/log.txt"
+echo "running test: $ARGS, log: $LOGS1/log.txt"
 cd /home/akka/akka
 cp /home/akka/multi-node-test.hosts /home/akka/akka/
-/home/akka/sbt $ARGS $COMMON_ARGS $MULTI_NODE_ARGS 'akka-remote-tests/test' > $LOGS1/log.txt
+/home/akka/sbt $ARGS $COMMON_ARGS $MULTI_NODE_ARGS -Dsbt.log.noformat=true 'akka-remote-tests/test' > $LOGS1/log.txt
+cat $LOGS1/log.txt | grep ===
 cd /home/akka/
 
 
