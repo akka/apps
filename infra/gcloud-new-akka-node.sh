@@ -7,6 +7,9 @@ SEED="$2"
 
 echo "Creating new node $NAME..."
 
+# we request the min cpu to be Skylake:
+# https://cloud.google.com/compute/docs/instances/specify-min-cpu-platform
+
 gcloud compute --project "akka-gcp" \
   instances create "$NAME" \
   --zone "europe-west1-b" \
@@ -17,7 +20,15 @@ gcloud compute --project "akka-gcp" \
   --image-project "ubuntu-os-cloud" \
   --tags "akka","http-server","https-server" \
   --boot-disk-size "20" --boot-disk-type "pd-ssd" \
-  --boot-disk-device-name "$NAME"
+  --boot-disk-device-name "$NAME" \
+  --metadata startup-script='#! /bin/bash
+    cd /home/akka
+    echo "Running all startup-scripts in $(pwd)..." 
+    for script in $(ls *startup-script*); do
+      echo "Running $script"
+      ./$script
+    done
+  '
 
 declare -r internal_ip=$(gcloud --project="akka-gcp" compute instances list | grep "$NAME" | head -n1 | awk '{ print $4 }')
 declare -r external_ip=$(gcloud --project="akka-gcp" compute instances list | grep "$NAME" | head -n1 | awk '{ print $5 }')
@@ -47,7 +58,9 @@ echo "      Press ENTER when ready...      "
 read
 echo "# -----------------------------------"
 
+
 echo "Deploying chef..."
+sleep 5
 fix node:$NAME deploy_chef -y
 
 echo "Preparing node..."

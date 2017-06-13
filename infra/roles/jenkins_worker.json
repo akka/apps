@@ -7,7 +7,7 @@
   },
 
   "run_list": [
-    "recipe[sbt]",
+    "recipe[sbt-manual]",
     "recipe[docker_simple]",
     "recipe[wrk2]",
     "recipe[ab]"

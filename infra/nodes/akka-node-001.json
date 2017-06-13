@@ -1,7 +1,7 @@
 {
     "chef_environment": "_default", 
     "ipaddress-internal": "10.132.0.7", 
-    "ipaddress": "104.155.50.175", 
+    "ipaddress": "35.187.119.12", 
     "name": "akka-node-001", 
     
     "akka": {
@@ -9,15 +9,17 @@
       
       "multi_node": [
         "10.132.0.7",
-        "10.132.0.7",
-        "10.132.0.7",
-        "10.132.0.7",
-        "10.132.0.7",
-        "10.132.0.7",
         "10.132.0.8"
       ]
     },
     
+    "authorization": {
+      "sudo": {
+        "users": ["akka", "ubuntu", "ktoso", "patriknw"],
+        "passwordless": "true"
+      }
+    },
+  
     "java": {
       "jdk_version": 8,
       "oracle": {
