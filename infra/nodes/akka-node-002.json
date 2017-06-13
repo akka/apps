@@ -12,6 +12,13 @@
         "10.132.0.8"
       ]
     },
+  
+    "authorization": {
+      "sudo": {
+        "users": ["akka"],
+        "passwordless": "true"
+      }
+    },
     
     "java": {
       "jdk_version": 8,

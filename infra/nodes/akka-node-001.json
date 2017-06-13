@@ -18,6 +18,13 @@
       ]
     },
     
+    "authorization": {
+      "sudo": {
+        "users": ["akka"],
+        "passwordless": "true"
+      }
+    },
+  
     "java": {
       "jdk_version": 8,
       "oracle": {

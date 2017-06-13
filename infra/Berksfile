@@ -5,4 +5,4 @@ cookbook 'apt'
 cookbook 'docker'
 cookbook 'cassandra'
 cookbook 'cassandra-dse', '~> 4.3.0'
-
+cookbook 'sudo'

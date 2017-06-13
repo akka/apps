@@ -8,6 +8,13 @@
       "seed_nodes": AKKA_SEED_NODES
     },
     
+    "authorization": {
+      "sudo": {
+        "users": ["akka"],
+        "passwordless": "true"
+      }
+    },
+    
     "java": {
       "jdk_version": 8,
       "oracle": {
