@@ -7,10 +7,14 @@ SEED="$2"
 
 echo "Creating new node $NAME..."
 
+# we request the min cpu to be Skylake:
+# https://cloud.google.com/compute/docs/instances/specify-min-cpu-platform
+
 gcloud compute --project "akka-gcp" \
   instances create "$NAME" \
   --zone "europe-west1-b" \
   --machine-type "n1-standard-4" \
+  --min-cpu-platform "Intel Skylake" \
   --subnet "default" --maintenance-policy "MIGRATE" --service-account "7250250762-compute@developer.gserviceaccount.com" \
   --scopes "https://www.googleapis.com/auth/cloud-platform" \
   --image "ubuntu-1704-zesty-v20170413" \
