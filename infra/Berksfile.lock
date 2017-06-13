@@ -3,6 +3,7 @@ DEPENDENCIES
   cassandra
   cassandra-dse (~> 4.3.0)
   docker
+  sudo
 
 GRAPH
   apt (2.9.2)
@@ -54,6 +55,7 @@ GRAPH
     yum-epel (>= 0.0.0)
   seven_zip (2.0.2)
     windows (>= 1.2.2)
+  sudo (3.5.0)
   systemd (2.1.3)
   thrift (1.2.0)
     boost (>= 0.0.0)
