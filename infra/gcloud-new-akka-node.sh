@@ -14,7 +14,6 @@ gcloud compute --project "akka-gcp" \
   instances create "$NAME" \
   --zone "europe-west1-b" \
   --machine-type "n1-standard-4" \
-  --min-cpu-platform "Intel Skylake" \
   --subnet "default" --maintenance-policy "MIGRATE" --service-account "7250250762-compute@developer.gserviceaccount.com" \
   --scopes "https://www.googleapis.com/auth/cloud-platform" \
   --image "ubuntu-1704-zesty-v20170413" \
@@ -22,15 +21,12 @@ gcloud compute --project "akka-gcp" \
   --tags "akka","http-server","https-server" \
   --boot-disk-size "20" --boot-disk-type "pd-ssd" \
   --boot-disk-device-name "$NAME" \
-  --metadata startup-script='#!/bin/bash
-    # Each time this node starts, it should attempt running the startup-script provided
-    # Chef scripts prepare the individual scripts, we just make sure we run them on boot
-    
+  --metadata startup-script='#! /bin/bash
     cd /home/akka
     echo "Running all startup-scripts in $(pwd)..." 
     for script in $(ls *startup-script*); do
       echo "Running $script"
-      #./$script
+      ./$script
     done
   '
 
@@ -62,7 +58,9 @@ echo "      Press ENTER when ready...      "
 read
 echo "# -----------------------------------"
 
+
 echo "Deploying chef..."
+sleep 5
 fix node:$NAME deploy_chef -y
 
 echo "Preparing node..."

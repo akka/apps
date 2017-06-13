@@ -7,7 +7,7 @@
 # All rights reserved - Do Not Redistribute
 #
 
-file "/home/akka/startup-script-akka-tweaks.sh" do
+cookbook_file "/home/akka/startup-script-akka-tweaks.sh" do
   source "startup-script-akka-tweaks.sh"
 end
 
@@ -19,6 +19,8 @@ end
 
 bash 'execute startup-script-akka-linux-tweaks.sh' do
   code <<-EOH
-    ./startup-script-akka-linux-tweaks.sh
+    cd /home/akka
+    chmod +x ./startup-script-akka-tweaks.sh
+    ./startup-script-akka-tweaks.sh
   EOH
 end

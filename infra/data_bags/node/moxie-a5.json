@@ -1,1 +1,0 @@
-{"domain": "", "name": "moxie-a5", "roles": [], "recipes": [], "chef_environment": "_default", "hostname": "moxie-a5", "fqdn": "moxie-a5", "role": [], "run_list": [], "automatic": {"ipaddress": "moxie-a5"}, "id": "moxie-a5"}

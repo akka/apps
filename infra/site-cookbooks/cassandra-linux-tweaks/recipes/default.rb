@@ -7,7 +7,7 @@
 # All rights reserved - Do Not Redistribute
 #
 
-file "/home/cassandra/startup-script-cassandra-tweaks.sh" do
+cookbook_file "/home/akka/startup-script-cassandra-tweaks.sh" do
   source "startup-script-cassandra-tweaks.sh"
 end
 
@@ -17,12 +17,14 @@ end
 
 bash "chown akka.akka startup-script-cassandra-tweaks.sh" do
   code <<-EOH
-    chown akka.akka /home/cassandra/startup-script-cassandra-tweaks.sh
+    chown akka.akka /home/akka/startup-script-cassandra-tweaks.sh
   EOH
 end
 
 bash 'execute startup-script-cassandra-linux-tweaks.sh' do
   code <<-EOH
-    ./startup-script-cassandra-linux-tweaks.sh
+    cd /home/akka
+    chmod +x ./startup-script-cassandra-tweaks.sh
+    ./startup-script-cassandra-tweaks.sh
   EOH
 end
