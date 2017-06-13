@@ -21,7 +21,18 @@ gcloud compute --project "akka-gcp" \
   --image-project "ubuntu-os-cloud" \
   --tags "akka","http-server","https-server" \
   --boot-disk-size "20" --boot-disk-type "pd-ssd" \
-  --boot-disk-device-name "$NAME"
+  --boot-disk-device-name "$NAME" \
+  --metadata startup-script='#!/bin/bash
+    # Each time this node starts, it should attempt running the startup-script provided
+    # Chef scripts prepare the individual scripts, we just make sure we run them on boot
+    
+    cd /home/akka
+    echo "Running all startup-scripts in $(pwd)..." 
+    for script in $(ls *startup-script*); do
+      echo "Running $script"
+      #./$script
+    done
+  '
 
 declare -r internal_ip=$(gcloud --project="akka-gcp" compute instances list | grep "$NAME" | head -n1 | awk '{ print $4 }')
 declare -r external_ip=$(gcloud --project="akka-gcp" compute instances list | grep "$NAME" | head -n1 | awk '{ print $5 }')

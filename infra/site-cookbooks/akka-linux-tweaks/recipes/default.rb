@@ -7,20 +7,18 @@
 # All rights reserved - Do Not Redistribute
 #
 
-bash 'update net.core.rmem_max' do
+file "/home/akka/startup-script-akka-tweaks.sh" do
+  source "startup-script-akka-tweaks.sh"
+end
+
+bash "chown akka.akka startup-script-akka-tweaks.sh" do
   code <<-EOH
-    sysctl net.core.rmem_max=2097152
+    chown akka.akka /home/akka/startup-script-akka-tweaks.sh
   EOH
 end
 
-bash 'update net.core.wmem_max' do
+bash 'execute startup-script-akka-linux-tweaks.sh' do
   code <<-EOH
-    sysctl net.core.wmem_max=2097152
-  EOH
-end
-
-bash "disable swap" do
-  code <<-EOH
-    swapoff --all
+    ./startup-script-akka-linux-tweaks.sh
   EOH
 end
