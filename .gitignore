@@ -74,3 +74,8 @@ worker*.log
 
 .internal-ips.tmp
 akka-diagnostics
+
+infra/.bundle
+infra/vendor
+infra/venv
+infra/cookbooks
