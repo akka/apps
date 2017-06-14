@@ -3,24 +3,30 @@
  */
 package com.lightbend.akka.bench.sharding
 
-import akka.actor.{ActorSystem, Props}
+import java.io.File
+
+import akka.actor.{ ActorSystem, Props }
 import com.typesafe.config.ConfigFactory
 
 object ShardingLatencyApp extends App {
 
-  val port = args(0).toInt
-  val role = if (port == 2551) "bench" else "shard"
-  println(s"role: $role")
+  // TODO only a single node must be the "bench" role
+  val role = if (false) "bench" else "shard" // FIXME this won't fly, make it check if it is leader?
+  println(s"NODE STARTING WITH ROLE: $role")
 
 
-  implicit val system = ActorSystem("cluster",
-    ConfigFactory.parseString(
-      s"""
-        akka.remote.netty.tcp.port = $port
-        akka.cluster.roles = [ $role ]
-      """).withFallback(ConfigFactory.load()))
-
-
+  // setup for clound env -------------------------------------------------------------
+    val rootConfFile = new File("/home/akka/root-application.conf")
+    val rootConf = 
+      if (rootConfFile.exists) ConfigFactory.parseFile(rootConfFile) 
+      else ConfigFactory.empty("no-root-application-conf-found")
+    
+    val conf = rootConf.withFallback(ConfigFactory.load())
+    // end of setup for clound env ------------------------------------------------------ 
+  
+    val systemName = Option(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
+    implicit val system = ActorSystem(systemName, conf)
+  
   if (role == "bench") {
     system.actorOf(Props[PingLatencyCoordinator], "bench-coordinator")
   } else {
