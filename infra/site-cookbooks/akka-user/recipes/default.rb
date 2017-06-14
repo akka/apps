@@ -32,7 +32,7 @@ cookbook_file '/home/akka/.ssh/id_rsa.pub' do
 end
 
 bash "make sure right permissions on ssh keys" do
-  code "chmod 400 ~/.ssh/id_rsa"
+  code "chmod 400 /home/akka/.ssh/id_rsa"
 end
 
 # this is a special file to get commercial tools onto the nodes

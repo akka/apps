@@ -7,7 +7,6 @@
 # All rights reserved - Do Not Redistribute
 #
 
-package 'htop'
 package 'make' 
 package 'gcc' 
 
