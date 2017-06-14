@@ -1,4 +1,6 @@
 akka {
+  
+  system-name = "<%= node['akka']['system_name'] %>"
 
   remote {
     netty.tcp {

@@ -22,9 +22,18 @@ bash "trust akka's public key" do
   EOH
 end
 
+
+# these are secrets, any key will work though, just generate one
 cookbook_file '/home/akka/.ssh/id_rsa' do
   source 'akka-user_id_rsa'
 end
 cookbook_file '/home/akka/.ssh/id_rsa.pub' do
   source 'akka-user_id_rsa.pub'
 end
+
+# this is a special file to get commercial tools onto the nodes
+# use your key and put it in there
+cookbook_file '/home/akka/.lightbend/commercial.credentials' do
+  source 'lightbend-commercial.credentials'
+end
+
