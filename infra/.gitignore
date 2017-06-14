@@ -2,3 +2,5 @@
 littlechef.cfg
 berks-cookbooks
 tmp_* 
+
+data_bags/*json
