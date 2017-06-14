@@ -8,6 +8,7 @@
 
   "run_list": [
     "recipe[akka-user]",
+    "recipe[clone-akka-repos]",
     "recipe[sudo]",
     "recipe[sbt-manual]",
     "recipe[java-manual]",

@@ -5,12 +5,7 @@
     "name": "akka-node-001", 
     
     "akka": {
-      "seed_nodes": "[\"10.132.0.7\"]",
-      
-      "multi_node": [
-        "10.132.0.7",
-        "10.132.0.8"
-      ]
+      "seed_nodes": "[\"10.132.0.7\"]"
     },
     
     "authorization": {
