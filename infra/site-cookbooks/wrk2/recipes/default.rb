@@ -7,13 +7,9 @@
 # All rights reserved - Do Not Redistribute
 #
 
-package 'make' do
-  action :install
-  end
-
-package 'gcc' do
-  action :install
-end
+package 'htop'
+package 'make' 
+package 'gcc' 
 
 execute 'cleanup wrk2' do
   command 'rm -rf wrk2'

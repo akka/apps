@@ -33,6 +33,9 @@ end
 
 # this is a special file to get commercial tools onto the nodes
 # use your key and put it in there
+bash "create $HOME/.lightbend" do
+  code "mkdir -p /home/akka/.lightbend"
+end
 cookbook_file '/home/akka/.lightbend/commercial.credentials' do
   source 'lightbend-commercial.credentials'
 end

@@ -1,3 +1,7 @@
+# ------------------------ WARNING -------------------------------- 
+#      This file is generated automatically via Chef scripts. 
+#      Do not edit manually - all your changes WILL be lost.
+# ------------------------ WARNING -------------------------------- 
 akka {
   
   system-name = "<%= node['akka']['system_name'] %>"
@@ -17,9 +21,9 @@ akka {
 
   cluster {
     seed-nodes = [
-      <%= (node['akka']['seed_nodes'].each do |seed|
-         "akka://#{node['akka']['system_name']}/@#{seed}:#{node['akka']['port']}"
-      end).join(",") %>
+      <%= (node['akka']['seed_nodes'].map do |seed|
+         "\"akka://#{node['akka']['system_name']}@#{seed}:#{node['akka']['port']}\""
+      end).join(",\n      ") %>
     ]
   }
 }
