@@ -5,54 +5,68 @@
 # $1 - IP to execute scripts on
 prepare() {
   declare -r IP2="$1"
-  
-  rm -rf $AERON_DIR
-  ssh $IP2 "cd $PWD; rm -rf $AERON_DIR"
-  
-  mkdir -p /home/akka/aeron; cd /home/akka/aeron; wget -nc http://repo1.maven.org/maven2/io/aeron/aeron-all/1.2.5/aeron-all-1.2.5.jar
-  ssh $IP2 "mkdir -p /home/akka/aeron; cd /home/akka/aeron; wget -nc http://repo1.maven.org/maven2/io/aeron/aeron-all/1.2.5/aeron-all-1.2.5.jar"
-  
-  java -cp /home/akka/aeron/aeron-all-1.2.5.jar $MEDIA_DRIVER_ARGS io.aeron.driver.MediaDriver &
-  ssh $IP2 "java -cp /home/akka/aeron/aeron-all-1.2.5.jar $MEDIA_DRIVER_ARGS io.aeron.driver.MediaDriver" &
-  sleep 10
-  
-  java -cp /home/akka/aeron/aeron-all-1.2.5.jar -Daeron.dir=$AERON_DIR io.aeron.samples.AeronStat type=[1-9] > $LOGS1/aeron-stat.txt &
-  ssh $IP2 "java -cp /home/akka/aeron/aeron-all-1.2.5.jar -Daeron.dir=$AERON_DIR io.aeron.samples.AeronStat type=[1-9] > $LOGS2/aeron-stat.txt" &
-  
-  vmstat 1 > $LOGS1/vmstat.txt &
-  ssh $IP2 "cd $PWD; vmstat 1 > $LOGS2/vmstat.txt" &
+  declare -r LOGS2="$LOGS_BASE/$IP2"
+
+  ssh $IP2 "
+    cd $PWD
+
+    mkdir -p $LOGS2
+
+    rm -rf $AERON_DIR
+
+    rm -f $MULTI_NODE_DIR/target/flight-recorder-*.afr
+
+    mkdir -p /home/akka/aeron
+    cd /home/akka/aeron
+    wget -nc http://repo1.maven.org/maven2/io/aeron/aeron-all/1.2.5/aeron-all-1.2.5.jar
+
+    java -cp /home/akka/aeron/aeron-all-1.2.5.jar $MEDIA_DRIVER_ARGS $ARGS io.aeron.driver.MediaDriver &
+    sleep 10
+    
+    java -cp /home/akka/aeron/aeron-all-1.2.5.jar -Daeron.dir=$AERON_DIR io.aeron.samples.AeronStat type=[1-9] > $LOGS2/aeron-stat.txt &
+
+    vmstat 1 > $LOGS2/vmstat.txt &
+  " &
+
 }
 
 # $1 - IP to execute scripts on
 finish() {
   declare -r IP2="$1"
+  declare -r LOGS2="$LOGS_BASE/$IP2"
+
+  ssh $IP2 "
+    cd $PWD
   
-  java -cp /home/akka/aeron/aeron-all-1.2.5.jar -Daeron.dir=$AERON_DIR io.aeron.samples.ErrorStat > $LOGS1/aeron-err.txt
-  ssh $IP2 "java -cp /home/akka/aeron/aeron-all-1.2.5.jar -Daeron.dir=$AERON_DIR io.aeron.samples.ErrorStat > $LOGS2/aeron-err.txt"
+    java -cp /home/akka/aeron/aeron-all-1.2.5.jar -Daeron.dir=$AERON_DIR io.aeron.samples.ErrorStat > $LOGS2/aeron-err.txt
+
+    du -h /dev/shm/aeron-akka > $LOGS2/aeron-disk-usage.txt
   
-  cp -R $AERON_DIR $LOGS1
-  ssh $IP2 "cd $PWD; cp -R $AERON_DIR $LOGS2"
+    cp -R $AERON_DIR $LOGS2
+
+    cp $MULTI_NODE_DIR/target/flight-recorder-*.afr $LOGS2
   
-  pkill -u akka vmstat
-  ssh $IP2 "cd $PWD; pkill -u akka vmstat"
+    pkill -u akka vmstat
   
-  pkill -u akka -f aeron
-  ssh $IP2 "cd $PWD; pkill -u akka -f aeron"
+    pkill -u akka -f aeron
+  "
   
-  scp -r $IP2:$LOGS2 $LOGS_BASE/
+  # avoid copy own files
+  if [ ! -d "$LOGS_BASE/$IP2" ]; then
+    scp -r $IP2:$LOGS2 $LOGS_BASE/
+  fi
 }
 # -------------- end of functions -----------------------------------------------------------------------------------------------
 
 
 declare -r LOGS_BASE="/home/akka/log/$(date '+20%y-%m-%d--%H%M')"
-
-for ip in $(cat /home/akka/multi-node-test.hosts); do
-  mkdir -p $LOGS_BASE/$ip
-done
+declare -r IP1="$(head -n 1 multi-node-test.hosts)"
+declare -r LOGS1="$LOGS_BASE/$IP1"
 
 declare -r AERON_DIR=/dev/shm/aeron-akka
 
-declare -r MEDIA_DRIVER_ARGS="-Xms1g -Xmx1g -XX:+UseCompressedOops -XX:MaxDirectMemorySize=256m -XX:ReservedCodeCacheSize=256m -XX:BiasedLockingStartupDelay=0 -Daeron.mtu.length=16384 -Daeron.socket.so_sndbuf=2097152 -Daeron.socket.so_rcvbuf=2097152 -Daeron.rcv.initial.window.length=2097152 -Dagrona.disable.bounds.checks=true"
+# -Daeron.threading.mode=DEDICATED -Daeron.sender.idle.strategy=org.agrona.concurrent.BusySpinIdleStrategy -Daeron.receiver.idle.strategy=org.agrona.concurrent.BusySpinIdleStrategy
+declare -r MEDIA_DRIVER_ARGS="-Daeron.threading.mode=SHARED_NETWORK -Xms1g -Xmx1g -XX:+UseCompressedOops -XX:MaxDirectMemorySize=256m -XX:ReservedCodeCacheSize=256m -XX:BiasedLockingStartupDelay=0 -Daeron.mtu.length=16384 -Daeron.socket.so_sndbuf=2097152 -Daeron.socket.so_rcvbuf=2097152 -Daeron.rcv.initial.window.length=2097152 -Daeron.term.buffer.sparse.file=false -Dagrona.disable.bounds.checks=true"
 
 declare -r MULTI_NODE_DIR="/home/akka/tmp-akka-multi-node"
 declare -r MULTI_NODE_ARGS="-Dakka.test.multi-node=true -Dakka.test.multi-node.targetDirName=$MULTI_NODE_DIR -Dmultinode.Xms1024M -Dmultinode.Xmx1024M -Dmultinode.XX:+PrintGCDetails -Dmultinode.XX:+PrintGCTimeStamps -Dmultinode.XX:BiasedLockingStartupDelay=0 -Dmultinode.Daeron.mtu.length=16384 -Dmultinode.Daeron.rcv.buffer.length=16384 -Dmultinode.Daeron.socket.so_sndbuf=2097152 -Dmultinode.Daeron.socket.so_rcvbuf=2097152 -Dmultinode.Daeron.rcv.initial.window.length=2097152 -Dmultinode.Dagrona.disable.bounds.checks=true -Dmultinode.XX:+UseCompressedOops -Dmultinode.XX:MaxDirectMemorySize=256m -Dmultinode.XX:+UnlockDiagnosticVMOptions -Dmultinode.XX:GuaranteedSafepointInterval=300000"
@@ -62,11 +76,15 @@ declare -r COMMON_ARGS="-Dakka.test.LatencySpec.totalMessagesFactor=30 -Dakka.te
 #declare -r ARGS="-Dakka.remote.artery.advanced.inbound-lanes=1"
 declare -r ARGS="$1"
 
+echo "logs in $LOGS_BASE"
 mkdir -p $LOGS1
-ssh $IP2 "cd $PWD; mkdir -p $LOGS2"
 
 # description of test 
-echo "$1" > $LOGS_BASE/readme.txt
+cd /home/akka/akka
+echo "$RGS" > $LOGS_BASE/readme.txt
+echo "MULTI_NODE_ARGS=$MULTI_NODE_ARGS" >> $LOGS_BASE/readme.txt
+echo "COMMON_ARGS=$COMMON_ARGS" >> $LOGS_BASE/readme.txt
+echo "MEDIA_DRIVER_ARGS=$MEDIA_DRIVER_ARGS" >> $LOGS_BASE/readme.txt
 git log -n 1 >> $LOGS_BASE/readme.txt
 
 # prepare all nodes
@@ -74,9 +92,14 @@ for ip in $(cat /home/akka/multi-node-test.hosts); do
   prepare $ip
 done
 
+sleep 10
+
 # run the tests ------------------------------------------
+echo "running test: $ARGS, log: $LOGS1/log.txt"
 cd /home/akka/akka
-/home/akka/sbt $ARGS $COMMON_ARGS $MULTI_NODE_ARGS 'akka-remote-tests/test' > $LOGS1/log.txt
+cp /home/akka/multi-node-test.hosts /home/akka/akka/
+/home/akka/sbt $COMMON_ARGS $MULTI_NODE_ARGS $ARGS -Dsbt.log.noformat=true 'akka-remote-tests/test' > $LOGS1/log.txt
+cat $LOGS1/log.txt | grep ===
 cd /home/akka/
 
 
