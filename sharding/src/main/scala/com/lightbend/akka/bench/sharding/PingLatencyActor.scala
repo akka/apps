@@ -1,0 +1,117 @@
+/*
+ * Copyright (C) 2016 Lightbend Inc. <http://www.typesafe.com>
+ */
+package com.lightbend.akka.bench.sharding
+
+import akka.actor.{Actor, ActorLogging, ActorPath, Props, ReceiveTimeout, RootActorPath, Terminated}
+import akka.cluster.ClusterEvent.MemberUp
+import akka.cluster.routing.{ClusterRouterGroup, ClusterRouterGroupSettings}
+import akka.cluster.{Cluster, ClusterEvent}
+import akka.routing.{BroadcastGroup, Router}
+import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.stream.{ActorMaterializer, KillSwitches, ThrottleMode}
+import com.lightbend.akka.bench.sharding.ShardingLatencyApp.system
+import org.HdrHistogram.Histogram
+
+import scala.concurrent.duration._
+
+
+object PingLatencyCoordinator {
+
+  def props() = Props(new PingLatencyCoordinator)
+}
+
+class PingLatencyCoordinator extends Actor with ActorLogging {
+
+  val cluster = Cluster(context.system)
+  cluster.subscribe(self, ClusterEvent.InitialStateAsEvents, classOf[ClusterEvent.MemberUp])
+  var seenUpNodes = 0
+
+  override def receive: Receive = {
+    case m: MemberUp =>
+      seenUpNodes += 1
+      // don't start benching until all nodes up
+      if (seenUpNodes == BenchSettings(context.system).TotalNodes) {
+        log.info("Saw [{}] nodes UP starting bench", seenUpNodes)
+        context.watch(system.actorOf(
+          PingingActor.props(),
+          "pinging-actor"))
+        context.become(benchmarking)
+      }
+  }
+
+  def benchmarking: Actor.Receive = {
+    case Terminated(_) =>
+      log.info("My work here is done")
+      cluster.leave(cluster.selfAddress)
+  }
+
+}
+
+/**
+ * Sends a configurable number of ping-pongs through sharding, half triggers a persist before pong and half pure
+ * in memory to measure sharding vs sharding + persistence
+ */
+object PingingActor {
+
+  def props() = Props(new PingingActor())
+}
+
+class PingingActor extends Actor with ActorLogging {
+
+  val settings = BenchSettings(context.system)
+  val proxy = BenchEntity.proxy(context.system)
+
+  val pongRecipient = context.watch(context.actorOf(
+    Props(new PongRecipient),
+    "pong-recipient"))
+
+  implicit val materializer = ActorMaterializer()(context.system)
+  val killSwitch =
+    Source(0L to settings.NumberOfPings)
+      // just chill a bit to give sharding time to start, doesn't really belong here but whatever
+      .initialDelay(1.second)
+      .throttle(settings.PingsPerSecond / 20, 50.millis, settings.PingsPerSecond, ThrottleMode.shaping)
+      .viaMat(KillSwitches.single)(Keep.right)
+      .toMat(Sink.foreach { n =>
+        val entityId = (n % settings.UniqueEntities).toString
+        val msg = BenchEntity.PersistAndPing(entityId, System.nanoTime())
+        proxy.tell(msg, pongRecipient)
+      })(Keep.left).run()
+
+  def receive = {
+
+    case Terminated(_) =>
+      killSwitch.shutdown()
+      context.stop(self)
+
+  }
+
+
+}
+
+class PongRecipient extends Actor {
+  case object Tick
+  val maxRecordedTimespan = 30 * 1000
+  val pingPersistPongMsHistogram = new Histogram(maxRecordedTimespan, 3)
+
+  context.setReceiveTimeout(20.seconds)
+
+  def receive = {
+
+    case BenchEntity.Pong(ping: BenchEntity.PersistAndPing) =>
+      val msSpan = (System.nanoTime() - ping.sentTimestamp) / 1000000
+      pingPersistPongMsHistogram.recordValue(msSpan)
+
+    case ReceiveTimeout =>
+      printHistograms()
+      context.stop(self)
+
+  }
+
+  def printHistograms(): Unit = {
+    println("Histogram of persisted ping-pongs")
+    pingPersistPongMsHistogram.outputPercentileDistribution(System.out, 1.0)
+  }
+
+}
