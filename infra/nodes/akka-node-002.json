@@ -5,12 +5,9 @@
     "name": "akka-node-002", 
     
     "akka": {
-      "seed_nodes": "[\"10.132.0.7\"]",
-            
-      "multi_node": [
-        "10.132.0.7",
-        "10.132.0.8"
-      ]
+      "system_name": "BenchmarkSystem",
+      "port": 2551,
+      "seed_nodes": ["10.132.0.7", "10.132.0.8"]
     },
   
     "authorization": {

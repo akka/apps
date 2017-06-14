@@ -6,3 +6,4 @@
 swapoff --all
 
 sysctl net.core.rmem_max=2097152
+sysctl net.core.wmem_max=2097152

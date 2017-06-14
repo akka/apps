@@ -15,22 +15,6 @@ user "akka" do
   manage_home true
 end
 
-template '/home/akka/root-application.conf' do
-  source 'root-application.conf.rb'
-end
-
-template '/home/akka/run-multinode-benchmark.sh' do 
-  source 'run-multinode-benchmark.sh.rb'
-end
-
-template '/home/akka/run-max-throughput-benchmark.sh' do 
-  source 'run-max-throughput-benchmark.sh.rb'
-end
-
-template '/home/akka/multi-node-test.hosts' do 
-  source 'multi-node-test.hosts.rb'
-end
-
 # set up mutual (naive, same key) trust between benchmark nodes
 bash "trust akka's public key" do
   code <<-EOH
@@ -38,6 +22,8 @@ bash "trust akka's public key" do
   EOH
 end
 
+
+# these are secrets, any key will work though, just generate one
 cookbook_file '/home/akka/.ssh/id_rsa' do
   source 'akka-user_id_rsa'
 end
@@ -45,12 +31,16 @@ cookbook_file '/home/akka/.ssh/id_rsa.pub' do
   source 'akka-user_id_rsa.pub'
 end
 
-bash "clone akka" do
-  code <<-EOH
-    cd /home/akka
-    rm -rf akka
-    git clone https://github.com/akka/akka
-
-    chown -R akka.akka akka
-  EOH
+bash "make sure right permissions on ssh keys" do
+  code "chmod 400 /home/akka/.ssh/id_rsa"
 end
+
+# this is a special file to get commercial tools onto the nodes
+# use your key and put it in there
+bash "create $HOME/.lightbend" do
+  code "mkdir -p /home/akka/.lightbend"
+end
+cookbook_file '/home/akka/.lightbend/commercial.credentials' do
+  source 'lightbend-commercial.credentials'
+end
+
