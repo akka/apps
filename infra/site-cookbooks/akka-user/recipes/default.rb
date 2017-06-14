@@ -31,6 +31,10 @@ cookbook_file '/home/akka/.ssh/id_rsa.pub' do
   source 'akka-user_id_rsa.pub'
 end
 
+bash "make sure right permissions on ssh keys" do
+  code "chmod 400 ~/.ssh/id_rsa"
+end
+
 # this is a special file to get commercial tools onto the nodes
 # use your key and put it in there
 bash "create $HOME/.lightbend" do
