@@ -23,6 +23,10 @@ template '/home/akka/run-multinode-benchmark.sh' do
   source 'run-multinode-benchmark.sh.rb'
 end
 
+template '/home/akka/run-max-throughput-benchmark.sh' do 
+  source 'run-max-throughput-benchmark.sh.rb'
+end
+
 template '/home/akka/multi-node-test.hosts' do 
   source 'multi-node-test.hosts.rb'
 end
