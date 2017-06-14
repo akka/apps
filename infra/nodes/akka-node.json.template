@@ -5,6 +5,8 @@
     "name": "NAME", 
     
     "akka": {
+      "system_name": "BenchmarkSystem",
+      "port": 2551,
       "seed_nodes": AKKA_SEED_NODES
     },
     
