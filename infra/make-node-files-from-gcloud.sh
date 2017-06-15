@@ -1,13 +1,10 @@
 #!/bin/sh
 
-# example:
+# examples:
+#
 # ./make-node-files-from-gcloud.sh akka-node-01 '["10.154.0.2"]'
-# Generated: ./nodes/akka-node-010.json
-# Generated: ./nodes/akka-node-011.json
-# Generated: ./nodes/akka-node-012.json
-# Generated: ./nodes/akka-node-013.json
-# Generated: ./nodes/akka-node-014.json
-# Generated: ./nodes/akka-node-015.json
+#
+# EXTRA_RUNLIST='"role[benchmark-ddata]",' ./make-node-files-from-gcloud.sh akka-node-01 '["10.154.0.2"]'
 
 if [[ "$#" != "2" ]]; then
   echo "USAGE: ./make-node-files-from-gcloud.sh GREP SEED_NODES"
@@ -30,6 +27,7 @@ do
     sed "s/NAME/$name/g" |
     sed "s/INTERNAL_IP/$internal_ip/g" |
     sed "s/AKKA_SEED_NODES/$SEED_NODES/g" |
+    sed "s/EXTRA_RUNLIST/$EXTRA_RUNLIST/g" |
     sed "s/TOTAL_NODES/$TOTAL_NODES/g" |
     sed "s/EXTERNAL_IP/$external_ip/g" > ./nodes/$name.json 
     
