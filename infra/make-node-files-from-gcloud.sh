@@ -8,6 +8,8 @@
 
 if [[ "$#" != "2" ]]; then
   echo "USAGE: ./make-node-files-from-gcloud.sh GREP SEED_NODES"
+  echo "EXTRA PARAMS:"
+  echo "  you can set: EXTRA_RUNLIST (   example: EXTRA_RUNLIST='"role[benchmark-ddata]",'   )"
 fi
 
 declare -r GREP=$1
