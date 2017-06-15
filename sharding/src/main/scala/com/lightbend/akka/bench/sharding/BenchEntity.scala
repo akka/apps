@@ -50,7 +50,7 @@ object BenchEntity {
     ClusterSharding(system).start(
       typeName,
       BenchEntity.props(),
-      ClusterShardingSettings(system),
+      ClusterShardingSettings(system).withRole("shard"),
       extractEntityId,
       extractShardId(BenchSettings(system).NumberOfShards)
     )
@@ -59,7 +59,7 @@ object BenchEntity {
     ClusterSharding(system)
       .startProxy(
         typeName,
-        None,
+        Some("shard"),
         extractEntityId,
         extractShardId(BenchSettings(system).NumberOfShards)
       )
