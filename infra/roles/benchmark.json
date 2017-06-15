@@ -13,6 +13,7 @@
     "recipe[sudo]",
     "recipe[sbt-manual]",
     "recipe[java-manual]",
+    "recipe[perf]",
     "recipe[wrk2]",
     "recipe[ab]",
     "recipe[akka-linux-tweaks]"
