@@ -17,6 +17,7 @@
 package com.lightbend.akka.bench.ddata
 
 import akka.actor.{Actor, ActorLogging}
+import akka.cluster.Cluster
 import org.HdrHistogram.Histogram
 
 import scala.util.Random
@@ -32,7 +33,7 @@ class DDataBenchmarkCoordinator() extends Actor with ActorLogging {
   final val NumRounds = context.system.settings.config.getInt("bench.ddata.num-rounds")
 
   val disseminationTiming = new Histogram(20 * 1000 * 1000, 3)
-  val NumNodes = context.system.settings.config.getInt("akka.cluster.min-nr-of-members")
+  val NumNodes            = context.system.settings.config.getInt("akka.cluster.min-nr-of-members")
 
   context.actorSelection("/user/" + DDataHost.Name) ! DDataHost.Add("stuff")
 
@@ -52,9 +53,10 @@ class DDataBenchmarkCoordinator() extends Actor with ActorLogging {
         if (roundsLeft > 1) {
           context.become(testing(NumNodes, roundsLeft - 1, System.nanoTime()))
           self ! Start
-        }
-        else {
+        } else {
           printStats()
+          val cluster = Cluster(context.system)
+          cluster.state.members.map(_.address).foreach(cluster.leave)
         }
       }
   }
@@ -65,10 +67,11 @@ class DDataBenchmarkCoordinator() extends Actor with ActorLogging {
   def printStats() = {
     def percentile(p: Double): Double = disseminationTiming.getValueAtPercentile(p)
 
-    println(s"=== Distributed Data Benchmark " +
-      f"50%%ile: ${percentile(50.0)}%.0f µs, " +
-      f"90%%ile: ${percentile(90.0)}%.0f µs, " +
-      f"99%%ile: ${percentile(99.0)}%.0f µs")
+    println(
+      s"=== Distributed Data Benchmark " +
+        f"50%%ile: ${percentile(50.0)}%.0f µs, " +
+        f"90%%ile: ${percentile(90.0)}%.0f µs, " +
+        f"99%%ile: ${percentile(99.0)}%.0f µs")
 
     println("Histogram of dissemination latencies in microseconds.")
     disseminationTiming.outputPercentileDistribution(System.out, 1.0)

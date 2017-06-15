@@ -23,12 +23,12 @@ import com.lightbend.akka.bench.sharding.PersistenceHistograms.PrintHistograms
 import org.HdrHistogram.Histogram
 
 /**
- * Thread safe histograms updated from the persistent entity, an actor (should be a single one per actor system)
- * periodically printing the histograms to stdout
- */
+  * Thread safe histograms updated from the persistent entity, an actor (should be a single one per actor system)
+  * periodically printing the histograms to stdout
+  */
 object PersistenceHistograms {
 
-  val persistTiming = new Histogram(20 * 1000, 3)
+  val persistTiming  = new Histogram(20 * 1000, 3)
   val recoveryTiming = new Histogram(60 * 1000, 3)
 
   object PrintHistograms

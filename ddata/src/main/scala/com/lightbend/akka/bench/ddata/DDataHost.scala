@@ -40,28 +40,33 @@ class DDataHost extends Actor {
 
   implicit val cluster = Cluster(context.system)
 
-  val writeTimeout = context.system.settings.config.getDuration("bench.ddata.write-timeout", TimeUnit.MICROSECONDS).micros
-  val writeConsistency = context.system.settings.config.getString("bench.ddata.write-consistency") match {
-    case "local" => WriteLocal
-    case "majority" => WriteMajority(writeTimeout)
-    case "all" => WriteAll(writeTimeout)
-    case numNodes => WriteTo(numNodes.toInt, writeTimeout)
+  final val WriteTimeout =
+    context.system.settings.config.getDuration("bench.ddata.write-timeout", TimeUnit.MICROSECONDS).micros
+  final val WriteConsistency = context.system.settings.config.getString("bench.ddata.write-consistency") match {
+    case "local"    => WriteLocal
+    case "majority" => WriteMajority(WriteTimeout)
+    case "all"      => WriteAll(WriteTimeout)
+    case numNodes   => WriteTo(numNodes.toInt, WriteTimeout)
   }
+  final val MaxElements = context.system.settings.config.getInt("bench.ddata.max-elements")
 
   val coordinator = context.actorOf(
-    ClusterSingletonProxy.props(
-      singletonManagerPath = "/user/" + DistributedDataBenchmark.CoordinatorManager,
-      settings = ClusterSingletonProxySettings(context.system)),
-    name = "coordinatorProxy")
+    ClusterSingletonProxy.props(singletonManagerPath = "/user/" + DistributedDataBenchmark.CoordinatorManager,
+                                settings = ClusterSingletonProxySettings(context.system)),
+    name = "coordinatorProxy"
+  )
 
   val replicator = DistributedData(context.system).replicator
-  val DataKey = ORSetKey[String]("benchmark")
+  val DataKey    = ORSetKey[String]("benchmark")
 
   replicator ! Replicator.Subscribe(DataKey, self)
 
   def receive = {
     case Add(el) =>
-      replicator ! Replicator.Update(DataKey, ORSet.empty[String], writeConsistency)(_ + el)
+      replicator ! Replicator.Update(DataKey, ORSet.empty[String], WriteConsistency) { set =>
+        val elementsToRemove = set.elements.take(set.size - MaxElements)
+        elementsToRemove.foldLeft(set + el)(_ - _)
+      }
 
     case c @ Replicator.Changed(DataKey) =>
       coordinator ! Added
