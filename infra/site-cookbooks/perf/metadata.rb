@@ -1,0 +1,7 @@
+name             'perf'
+maintainer       'YOUR_NAME'
+maintainer_email 'YOUR_EMAIL'
+license          'All rights reserved'
+description      'Installs/Configures perf'
+long_description 'Installs/Configures perf'
+version          '0.1.0'
