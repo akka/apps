@@ -30,8 +30,8 @@ object BenchSettings extends ExtensionId[BenchSettings] {
 class BenchSettings(system: ActorSystem) extends Extension {
   private val config = system.settings.config.getConfig("shard-bench")
   val UniqueEntities = config.getInt("unique-entities")
-  val NumberOfPings = config.getInt("number-of-pings")
+  val NumberOfPings  = config.getInt("number-of-pings")
   val PingsPerSecond = config.getInt("pings-per-second")
   val NumberOfShards = config.getInt("number-of-shards")
-  val TotalNodes = config.getInt("total-nodes")
+  val TotalNodes     = config.getInt("total-nodes")
 }

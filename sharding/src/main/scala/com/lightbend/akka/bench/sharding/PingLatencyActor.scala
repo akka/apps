@@ -28,7 +28,6 @@ import org.HdrHistogram.Histogram
 
 import scala.concurrent.duration._
 
-
 object PingLatencyCoordinator {
 
   def props() = Props(new PingLatencyCoordinator)
@@ -60,9 +59,9 @@ class PingLatencyCoordinator extends Actor with ActorLogging {
 }
 
 /**
- * Sends a configurable number of ping-pongs through sharding, half triggers a persist before pong and half pure
- * in memory to measure sharding vs sharding + persistence
- */
+  * Sends a configurable number of ping-pongs through sharding, half triggers a persist before pong and half pure
+  * in memory to measure sharding vs sharding + persistence
+  */
 object PingingActor {
 
   def props() = Props(new PingingActor())
@@ -71,24 +70,23 @@ object PingingActor {
 class PingingActor extends Actor with ActorLogging {
 
   val settings = BenchSettings(context.system)
-  val proxy = BenchEntity.proxy(context.system)
+  val proxy    = BenchEntity.proxy(context.system)
 
-  val pongRecipient = context.watch(context.actorOf(
-    Props(new PongRecipient),
-    "pong-recipient"))
+  val pongRecipient = context.watch(context.actorOf(Props(new PongRecipient), "pong-recipient"))
 
   implicit val materializer = ActorMaterializer()(context.system)
   val killSwitch =
     Source(0L to settings.NumberOfPings)
-      // just chill a bit to give sharding time to start, doesn't really belong here but whatever
+    // just chill a bit to give sharding time to start, doesn't really belong here but whatever
       .initialDelay(1.second)
       .throttle(settings.PingsPerSecond / 20, 50.millis, settings.PingsPerSecond, ThrottleMode.shaping)
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.foreach { n =>
         val entityId = (n % settings.UniqueEntities).toString
-        val msg = BenchEntity.PersistAndPing(entityId, System.nanoTime())
+        val msg      = BenchEntity.PersistAndPing(entityId, System.nanoTime())
         proxy.tell(msg, pongRecipient)
-      })(Keep.left).run()
+      })(Keep.left)
+      .run()
 
   def receive = {
 
@@ -98,12 +96,11 @@ class PingingActor extends Actor with ActorLogging {
 
   }
 
-
 }
 
 class PongRecipient extends Actor {
   case object Tick
-  val maxRecordedTimespan = 30 * 1000
+  val maxRecordedTimespan        = 30 * 1000
   val pingPersistPongMsHistogram = new Histogram(maxRecordedTimespan, 3)
 
   context.setReceiveTimeout(20.seconds)

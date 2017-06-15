@@ -16,11 +16,11 @@
 
 package com.lightbend.akka.bench.ddata
 
-import akka.actor.{ ActorSystem, PoisonPill, Props }
+import akka.actor.{ActorSystem, CoordinatedShutdown, PoisonPill, Props}
 import akka.cluster.Cluster
 import java.io.File
 
-import akka.cluster.singleton.{ ClusterSingletonManager, ClusterSingletonManagerSettings }
+import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings}
 import com.typesafe.config.ConfigFactory
 
 import scala.util.Try
@@ -31,28 +31,24 @@ object DistributedDataBenchmark extends App {
 
   // setup for clound env -------------------------------------------------------------
   val rootConfFile = new File("/home/akka/root-application.conf")
-  val rootConf = 
-    if (rootConfFile.exists) ConfigFactory.parseFile(rootConfFile) 
+  val rootConf =
+    if (rootConfFile.exists) ConfigFactory.parseFile(rootConfFile)
     else ConfigFactory.empty("no-root-application-conf-found")
-  
+
   val conf = rootConf.withFallback(ConfigFactory.load())
-  // end of setup for clound env ------------------------------------------------------ 
+  // end of setup for clound env ------------------------------------------------------
 
   val systemName = Try(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
-  val system = ActorSystem(systemName, conf)
-  
+  val system     = ActorSystem(systemName, conf)
 
   Cluster(system).registerOnMemberUp {
     system.actorOf(Props[DDataHost], DDataHost.Name)
 
     system.actorOf(
-      ClusterSingletonManager.props(
-        singletonProps = Props[DDataBenchmarkCoordinator],
-        terminationMessage = PoisonPill,
-        settings = ClusterSingletonManagerSettings(system)),
-      name = CoordinatorManager)
+      ClusterSingletonManager.props(singletonProps = Props[DDataBenchmarkCoordinator],
+                                    terminationMessage = PoisonPill,
+                                    settings = ClusterSingletonManagerSettings(system)),
+      name = CoordinatorManager
+    )
   }
-
-  scala.io.StdIn.readLine() // TODO not sure if readline will work well with starting it via scripts...
-  system.terminate()
 }

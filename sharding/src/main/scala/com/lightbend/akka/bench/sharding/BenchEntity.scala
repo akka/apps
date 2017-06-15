@@ -23,9 +23,9 @@ import akka.persistence.{PersistentActor, RecoveryCompleted}
 object BenchEntity {
 
   // commands
-  trait EntityCommand { def id: String }
-  trait PingLike { def sentTimestamp: Long }
-  case class Ping(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
+  trait EntityCommand { def id: String          }
+  trait PingLike      { def sentTimestamp: Long }
+  case class Ping(id: String, sentTimestamp: Long)           extends EntityCommand with PingLike
   case class PersistAndPing(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
   case class Pong(original: PingLike)
 
@@ -33,7 +33,6 @@ object BenchEntity {
   case class PingObserved(sentTimestamp: Long)
 
   def props() = Props[BenchEntity]
-
 
   // sharding config
   val typeName = "bench-entity"
@@ -74,7 +73,7 @@ class BenchEntity extends PersistentActor with ActorLogging {
 
   val start = System.nanoTime()
   override def receiveRecover: Receive = {
-    case _ :PingObserved =>
+    case _: PingObserved =>
       persistentPingCounter += 1
 
     case _: RecoveryCompleted =>
@@ -94,7 +93,7 @@ class BenchEntity extends PersistentActor with ActorLogging {
       // roundtrip with write
       log.debug("Got persist-ping from [{}]", sender())
       val before = System.nanoTime()
-      persist(PingObserved(msg.sentTimestamp)){ _ =>
+      persist(PingObserved(msg.sentTimestamp)) { _ =>
         val persistMs = (System.nanoTime() - before) / 1000000
         PersistenceHistograms.persistTiming.recordValue(persistMs)
         persistentPingCounter += 1
@@ -102,6 +101,5 @@ class BenchEntity extends PersistentActor with ActorLogging {
       }
 
   }
-
 
 }

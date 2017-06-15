@@ -18,7 +18,7 @@ package com.lightbend.akka.bench.sharding
 
 import java.io.File
 
-import akka.actor.{ ActorSystem, Props }
+import akka.actor.{ActorSystem, Props}
 import akka.cluster.Cluster
 import akka.cluster.http.management.ClusterHttpManagement
 import com.typesafe.config.ConfigFactory
@@ -34,18 +34,17 @@ object ShardingLatencyApp extends App {
     else ConfigFactory.empty("no-root-application-conf-found")
 
   val conf = rootConf.withFallback(ConfigFactory.load())
-  // end of setup for clound env ------------------------------------------------------ 
+  // end of setup for clound env ------------------------------------------------------
 
-  val systemName = Try(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
+  val systemName      = Try(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
   implicit val system = ActorSystem(systemName, conf)
-  
+
   // management -----------
   val cluster = Cluster(system)
   ClusterHttpManagement(cluster).start()
   // end of management ----
-  
-  
-  if (cluster.selfRoles contains "master") { 
+
+  if (cluster.selfRoles contains "master") {
     system.actorOf(Props[PingLatencyCoordinator], "bench-coordinator")
   } else {
     BenchEntity.startRegion(system)

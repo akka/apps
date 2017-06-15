@@ -1,15 +1,12 @@
 val Akka = "2.5.2"
 val AkkaCom = "1.0.3"
 
-lazy val `apps-root` = project
-  .in(file("."))
-  .aggregate(apps)
-  .enablePlugins(ScalafmtPlugin)
-
 lazy val apps = project
-  .enablePlugins(
-    AutomateHeaderPlugin,
-    ScalafmtPlugin)
+  .in(file("."))
+  .aggregate(ddata, sharding)
+
+lazy val ddata = project
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-cluster-sharding"     % Akka,
@@ -22,7 +19,7 @@ lazy val apps = project
   )
   .enablePlugins(JavaAppPackaging)
 
-lazy val sharding = project.enablePlugins(apps.plugins)
+lazy val sharding = project.enablePlugins(ddata.plugins)
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
@@ -31,13 +28,15 @@ lazy val sharding = project.enablePlugins(apps.plugins)
       "com.typesafe.akka"     %% "akka-persistence-cassandra"   % "0.54",
       "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
       "com.lightbend.akka"    %% "akka-management-cluster-http" % "0.3"
-      
+
     )
   )
 
 inThisBuild(Seq(
   scalaVersion := "2.12.2",
-  scalafmtVersion := "1.0.0-RC2",
+
+  scalafmtVersion := "1.0.0-RC3",
+  scalafmtOnCompile := true,
 
   // headers
   organizationName := "Lightbend Inc.",
