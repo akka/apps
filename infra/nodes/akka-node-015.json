@@ -1,16 +1,16 @@
 {
     "chef_environment": "_default", 
-    "ipaddress-internal": "INTERNAL_IP", 
-    "ipaddress": "EXTERNAL_IP", 
-    "name": "NAME", 
+    "ipaddress-internal": "10.154.0.7", 
+    "ipaddress": "35.189.79.50", 
+    "name": "akka-node-015", 
     
     "akka": {
       "system_name": "BenchmarkSystem",
       "port": 2551,      
       "roles": [],
 
-      "seed_nodes": AKKA_SEED_NODES,
-      "total_nodes": TOTAL_NODES
+      "seed_nodes": ["10.154.0.2"],
+      "total_nodes": 6
     },
     
     "authorization": {
