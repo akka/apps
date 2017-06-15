@@ -1,6 +1,7 @@
 #!/bin/sh
 
-# wip-sharding-polishing!akka-apps/infra *> ./make-node-files-from-gcloud.sh akka-node-01 '["10.154.0.2"]'
+# example:
+# ./make-node-files-from-gcloud.sh akka-node-01 '["10.154.0.2"]'
 # Generated: ./nodes/akka-node-010.json
 # Generated: ./nodes/akka-node-011.json
 # Generated: ./nodes/akka-node-012.json
