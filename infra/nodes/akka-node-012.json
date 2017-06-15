@@ -1,16 +1,16 @@
 {
     "chef_environment": "_default", 
-    "ipaddress-internal": "10.132.0.7", 
-    "ipaddress": "35.187.119.12", 
-    "name": "akka-node-001", 
+    "ipaddress-internal": "10.154.0.4", 
+    "ipaddress": "35.189.69.146", 
+    "name": "akka-node-012", 
     
     "akka": {
       "system_name": "BenchmarkSystem",
-      "port": 2551,
-      "roles": ["bench", ""],
-      
-      "seed_nodes": ["10.132.0.7", "10.132.0.8"],
-      "total_nodes": 2
+      "port": 2551,      
+      "roles": [],
+
+      "seed_nodes": ["10.154.0.2"],
+      "total_nodes": 6
     },
     
     "authorization": {
@@ -19,7 +19,7 @@
         "passwordless": "true"
       }
     },
-  
+    
     "java": {
       "jdk_version": 8,
       "oracle": {
@@ -28,7 +28,7 @@
       "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
     },
     "run_list": [
-        "role[benchmark]",
+        "role[benchmark]", "role[benchmark-ddata]",
         "role[gce-tools]"
     ]
 }
