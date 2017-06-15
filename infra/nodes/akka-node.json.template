@@ -6,8 +6,11 @@
     
     "akka": {
       "system_name": "BenchmarkSystem",
-      "port": 2551,
-      "seed_nodes": AKKA_SEED_NODES
+      "port": 2551,      
+      "roles": [],
+
+      "seed_nodes": AKKA_SEED_NODES,
+      "total_nodes": TOTAL_NODES
     },
     
     "authorization": {
@@ -25,7 +28,7 @@
       "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
     },
     "run_list": [
-        "role[benchmark]",
+        "role[benchmark]", EXTRA_RUNLIST
         "role[gce-tools]"
     ]
 }

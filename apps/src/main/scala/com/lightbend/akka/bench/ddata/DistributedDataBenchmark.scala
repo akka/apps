@@ -23,6 +23,8 @@ import java.io.File
 import akka.cluster.singleton.{ ClusterSingletonManager, ClusterSingletonManagerSettings }
 import com.typesafe.config.ConfigFactory
 
+import scala.util.Try
+
 object DistributedDataBenchmark extends App {
 
   final val CoordinatorManager = "coordinatorManager"
@@ -36,7 +38,7 @@ object DistributedDataBenchmark extends App {
   val conf = rootConf.withFallback(ConfigFactory.load())
   // end of setup for clound env ------------------------------------------------------ 
 
-  val systemName = Option(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
+  val systemName = Try(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
   val system = ActorSystem(systemName, conf)
   
 
