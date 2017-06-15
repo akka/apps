@@ -23,6 +23,13 @@ akka {
   } 
 
   cluster {
+    
+    roles = [
+      <%= (node['akka']['roles'].map do |role|
+        "\"#{role}\"" 
+      end).join(",\n      ") %>
+    ]
+
     seed-nodes = [
       <%= (node['akka']['seed_nodes'].map do |seed|
          "\"akka://#{node['akka']['system_name']}@#{seed}:#{node['akka']['port']}\""
