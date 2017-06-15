@@ -17,10 +17,11 @@ end
 
 bash "clone akka" do
   code <<-EOH
-    cd /home/akka
-    rm -rf akka
-    git clone https://github.com/akka/akka
+    curl -Ls https://git.io/sbt > /home/akka/sbt 
+    chmod 0755 /home/akka/sbt
+    chown akka.akka sbt
 
-    chown -R akka.akka akka
+    echo '' >> /home/akka/.bashrc
+    echo 'PATH=$PATH:/home/akka' >> /home/akka/.bashrc
   EOH
 end

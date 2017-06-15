@@ -4,3 +4,6 @@ berks-cookbooks
 tmp_* 
 
 data_bags/*
+
+
+site-cookbooks/update-hosts/templates/default/multi-node-test.hosts
