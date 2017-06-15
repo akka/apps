@@ -76,11 +76,10 @@ class PingingActor extends Actor with ActorLogging {
   val settings = BenchSettings(context.system)
   val proxy = BenchEntity.proxy(context.system)
 
-  val pongRecipient = context.watch(context.actorOf(
-    Props(new PongRecipient),
-    "pong-recipient"))
+  val pongRecipient = context.watch(context.actorOf(Props(new PongRecipient), "pong-recipient"))
 
   implicit val materializer = ActorMaterializer()(context.system)
+  
   val killSwitch =
     Source(0L to settings.NumberOfPings)
       // just chill a bit to give sharding time to start, doesn't really belong here but whatever
