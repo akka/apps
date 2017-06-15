@@ -1,8 +1,8 @@
 {
   "name": "ab",
-  "description": "Installs ab",
+  "description": "Installs/Configures ab",
   "long_description": "Installs/Configures ab",
-  "maintainer": "Konrad Malawski",
+  "maintainer": "YOUR_NAME",
   "maintainer_email": "YOUR_EMAIL",
   "license": "All rights reserved",
   "platforms": {

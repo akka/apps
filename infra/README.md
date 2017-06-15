@@ -6,24 +6,37 @@ Dependencies
 
 ```
 gem install bundler
-bundle install
-# install chef-dk: https://downloads.chef.io/chefdk
-chef gem install knife-solo
 
-sudo easy_install pip
+# install chef-dk: https://downloads.chef.io/chefdk
+bundle install --path vendor/bundle
+
+# Create and activate python virtual env
+virtualenv --python=/usr/bin/python2.7 venv
+source venv/bin/activate
+
 # install littlechef: https://github.com/tobami/littlechef
 pip install littlechef
 
-berks vendor
+bundle exec berks vendor
 ```
 
-Then prepare the lifflechef file:
+Then prepare the littlechef file:
 
 ```
-mv littlechef.cfg-example littlechef.cfg
+cp littlechef.cfg-example littlechef.cfg
 ```
 
-And fill it in with potential secrets etc.
+Fix cookbooks directory:
+
+```
+mv berks-cookbooks cookbooks
+```
+
+Tryout the setup by running a command on a group of nodes:
+
+```
+bundle exec fix --concurrency 2 nodes_with_role:benchmark-ddata ssh:"hostname"
+```
 
 Preparing a node for cheffing
 -------------
