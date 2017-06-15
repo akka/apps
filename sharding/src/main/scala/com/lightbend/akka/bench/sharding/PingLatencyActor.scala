@@ -16,13 +16,14 @@
 
 package com.lightbend.akka.bench.sharding
 
-import akka.actor.{Actor, ActorLogging, ActorPath, Props, ReceiveTimeout, RootActorPath, Terminated}
+import akka.actor.{ Actor, ActorLogging, ActorPath, CoordinatedShutdown, Props, ReceiveTimeout, RootActorPath, Terminated }
 import akka.cluster.ClusterEvent.MemberUp
-import akka.cluster.routing.{ClusterRouterGroup, ClusterRouterGroupSettings}
-import akka.cluster.{Cluster, ClusterEvent}
-import akka.routing.{BroadcastGroup, Router}
-import akka.stream.scaladsl.{Keep, Sink, Source}
-import akka.stream.{ActorMaterializer, KillSwitches, ThrottleMode}
+import akka.cluster.routing.{ ClusterRouterGroup, ClusterRouterGroupSettings }
+import akka.cluster.sharding.ShardRegion.GracefulShutdown
+import akka.cluster.{ Cluster, ClusterEvent }
+import akka.routing.{ BroadcastGroup, Router }
+import akka.stream.scaladsl.{ Keep, Sink, Source }
+import akka.stream.{ ActorMaterializer, KillSwitches, ThrottleMode }
 import com.lightbend.akka.bench.sharding.ShardingLatencyApp.system
 import org.HdrHistogram.Histogram
 
@@ -36,7 +37,9 @@ object PingLatencyCoordinator {
 
 class PingLatencyCoordinator extends Actor with ActorLogging {
 
-  val cluster = Cluster(context.system)
+  val system = context.system
+  val cluster = Cluster(system)
+  
   cluster.subscribe(self, ClusterEvent.InitialStateAsEvents, classOf[ClusterEvent.MemberUp])
   var seenUpNodes = 0
 
@@ -44,7 +47,7 @@ class PingLatencyCoordinator extends Actor with ActorLogging {
     case m: MemberUp =>
       seenUpNodes += 1
       // don't start benching until all nodes up
-      if (seenUpNodes == BenchSettings(context.system).TotalNodes) {
+      if (seenUpNodes == BenchSettings(system).TotalNodes) {
         log.info("Saw [{}] nodes UP starting bench", seenUpNodes)
         context.watch(system.actorOf(PingingActor.props(), "pinging-actor"))
         context.become(benchmarking)
@@ -54,7 +57,7 @@ class PingLatencyCoordinator extends Actor with ActorLogging {
   def benchmarking: Actor.Receive = {
     case Terminated(_) =>
       log.info("My work here is done")
-      cluster.leave(cluster.selfAddress)
+      CoordinatedShutdown(system).run()
   }
 
 }
@@ -81,7 +84,7 @@ class PingingActor extends Actor with ActorLogging {
   val killSwitch =
     Source(0L to settings.NumberOfPings)
       // just chill a bit to give sharding time to start, doesn't really belong here but whatever
-      .initialDelay(1.second)
+      .initialDelay(10.second)
       .throttle(settings.PingsPerSecond / 20, 50.millis, settings.PingsPerSecond, ThrottleMode.shaping)
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.foreach { n =>
