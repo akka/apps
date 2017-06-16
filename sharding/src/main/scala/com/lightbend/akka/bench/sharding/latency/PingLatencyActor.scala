@@ -14,17 +14,14 @@
  * limitations under the License.
  */
 
-package com.lightbend.akka.bench.sharding
+package com.lightbend.akka.bench.sharding.latency
 
-import akka.actor.{ Actor, ActorLogging, ActorPath, CoordinatedShutdown, Props, ReceiveTimeout, RootActorPath, Terminated }
+import akka.actor.{ Actor, ActorLogging, CoordinatedShutdown, Props, ReceiveTimeout, Terminated }
 import akka.cluster.ClusterEvent.MemberUp
-import akka.cluster.routing.{ ClusterRouterGroup, ClusterRouterGroupSettings }
-import akka.cluster.sharding.ShardRegion.GracefulShutdown
 import akka.cluster.{ Cluster, ClusterEvent }
-import akka.routing.{ BroadcastGroup, Router }
 import akka.stream.scaladsl.{ Keep, Sink, Source }
 import akka.stream.{ ActorMaterializer, KillSwitches, ThrottleMode }
-import com.lightbend.akka.bench.sharding.ShardingLatencyApp.system
+import com.lightbend.akka.bench.sharding.BenchSettings
 import org.HdrHistogram.Histogram
 
 import scala.concurrent.duration._
@@ -74,7 +71,7 @@ object PingingActor {
 class PingingActor extends Actor with ActorLogging {
 
   val settings = BenchSettings(context.system)
-  val proxy = BenchEntity.proxy(context.system)
+  val proxy = LatencyBenchEntity.proxy(context.system)
 
   val pongRecipient = context.watch(context.actorOf(Props(new PongRecipient), "pong-recipient"))
 
@@ -88,7 +85,7 @@ class PingingActor extends Actor with ActorLogging {
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.foreach { n =>
         val entityId = (n % settings.UniqueEntities).toString
-        val msg = BenchEntity.PersistAndPing(entityId, System.nanoTime())
+        val msg = LatencyBenchEntity.PersistAndPing(entityId, System.nanoTime())
         proxy.tell(msg, pongRecipient)
       })(Keep.left).run()
 
@@ -112,7 +109,7 @@ class PongRecipient extends Actor {
 
   def receive = {
 
-    case BenchEntity.Pong(ping: BenchEntity.PersistAndPing) =>
+    case LatencyBenchEntity.Pong(ping: LatencyBenchEntity.PersistAndPing) =>
       val msSpan = (System.nanoTime() - ping.sentTimestamp) / 1000000
       pingPersistPongMsHistogram.recordValue(msSpan)
 

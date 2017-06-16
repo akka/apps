@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.lightbend.akka.bench.sharding
+package com.lightbend.akka.bench.sharding.latency
 
 import java.io.File
 import java.net.InetAddress
@@ -22,6 +22,7 @@ import java.net.InetAddress
 import akka.actor.{ ActorSystem, Props }
 import akka.cluster.Cluster
 import akka.cluster.http.management.ClusterHttpManagement
+import PingLatencyCoordinator
 import com.typesafe.config.ConfigFactory
 
 import scala.util.Try
@@ -60,7 +61,7 @@ object ShardingLatencyApp extends App {
   if (cluster.selfRoles contains "master") { 
     system.actorOf(Props[PingLatencyCoordinator], "bench-coordinator")
   } else {
-    BenchEntity.startRegion(system)
+    LatencyBenchEntity.startRegion(system)
     system.actorOf(PersistenceHistograms.props(), "persistence-histogram-printer")
   }
 }

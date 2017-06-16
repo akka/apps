@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package com.lightbend.akka.bench.sharding
+package com.lightbend.akka.bench.sharding.latency
 
-import akka.actor.{Actor, Props}
+import akka.actor.{ Actor, Props }
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.MemberLeft
-import com.lightbend.akka.bench.sharding.PersistenceHistograms.PrintHistograms
 import org.HdrHistogram.Histogram
 
 /**

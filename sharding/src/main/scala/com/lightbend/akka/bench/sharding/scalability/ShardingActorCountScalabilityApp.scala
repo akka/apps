@@ -14,18 +14,19 @@
  * limitations under the License.
  */
 
-package com.lightbend.akka.bench.sharding
+package com.lightbend.akka.bench.sharding.scalability
 
 import java.io.File
 
 import akka.actor.{ ActorSystem, Props }
 import akka.cluster.Cluster
 import akka.cluster.http.management.ClusterHttpManagement
+import com.lightbend.akka.bench.sharding.latency.PingLatencyCoordinator
 import com.typesafe.config.ConfigFactory
 
 import scala.util.Try
 
-object ShardingFailoverRestartApp extends App {
+object ShardingActorCountScalabilityApp extends App {
 
   // setup for clound env -------------------------------------------------------------
   val rootConfFile = new File("/home/akka/root-application.conf")
@@ -36,7 +37,7 @@ object ShardingFailoverRestartApp extends App {
   val conf = rootConf.withFallback(ConfigFactory.load())
   // end of setup for clound env ------------------------------------------------------ 
 
-  val systemName = Try(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
+  val systemName = Try(conf.getString("akka.system-name")).getOrElse("ShardingActorCountScalabilitySystem")
   implicit val system = ActorSystem(systemName, conf)
   
   // management -----------
@@ -48,7 +49,6 @@ object ShardingFailoverRestartApp extends App {
   if (cluster.selfRoles contains "master") { 
     system.actorOf(Props[PingLatencyCoordinator], "bench-coordinator")
   } else {
-    BenchEntity.startRegion(system)
-    system.actorOf(PersistenceHistograms.props(), "persistence-histogram-printer")
+    ActorCountingEntity.startRegion(system)
   }
 }
