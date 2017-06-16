@@ -15,10 +15,10 @@ class ActorCountingBenchmarkMaster extends Actor with ActorLogging {
   val cluster = Cluster(context.system)
   
   // number of actors we sent a message to (so they should start in sharding)
-  var totalActorsInSharding = 0
+  var totalStartingActorsInSharding = 0
   // number of actors who have not yet replied back that they've started
   var pendingAliveConfirmation = 0
-  var confirmations = 0
+  var totalAliveConfirmedActors = 0
   val timesWhenWeStartedBatch = new util.ArrayDeque[Long](10) 
   
   override def preStart(): Unit = {
@@ -29,22 +29,21 @@ class ActorCountingBenchmarkMaster extends Actor with ActorLogging {
   
   override def receive: Receive = {
     case ActorCountingEntity.Ready(startTime) =>
-      
       // not really goal of this benchmark though: 
       // if (log.isDebugEnabled)
       //   log.debug("Actor {} took [{} ns] to initialize and reply-back", sender().path.name, startTime - System.nanoTime())
       
       pendingAliveConfirmation -= 1
-      confirmations += 1
-      if (confirmations % addActorsBatch == 0) {
+      totalAliveConfirmedActors += 1
+      if (totalAliveConfirmedActors % addActorsBatch == 0) {
         val timeToStartBatch = (System.nanoTime() - timesWhenWeStartedBatch.pop()).nanos.toMillis
-        log.info("FINISHED INITIALIZING ANOTHER {} ACTORS IN [{} ms]!!!", addActorsBatch, timeToStartBatch)
+        log.info("FINISHED INITIALIZING ANOTHER {} ACTORS (TOTAL: {}) IN [{} ms]!!!", addActorsBatch, totalAliveConfirmedActors, timeToStartBatch)
       }
       
     case AddMoreActors =>
       log.info(
         s"Adding:+${addActorsBatch} actors. " +
-          s"Total actors before:[${totalActorsInSharding}]. " +
+          s"Total actors before:[${totalStartingActorsInSharding}]. " +
           s"STILL pending alive-confirmation:[${pendingAliveConfirmation}] (so ${, pendingAliveConfirmation + addActorsBatch} now). " +
           s"At cluster size:${cluster.state.members.size} nodes)") 
       
@@ -52,8 +51,8 @@ class ActorCountingBenchmarkMaster extends Actor with ActorLogging {
       
       var i = 0 
       while (i < addActorsBatch) {
-        totalActorsInSharding += 1 
-        sharding ! ActorCountingEntity.Start(totalActorsInSharding, System.nanoTime())
+        totalStartingActorsInSharding += 1 
+        sharding ! ActorCountingEntity.Start(totalStartingActorsInSharding, System.nanoTime())
         i += 1
       }
       pendingAliveConfirmation += addActorsBatch
