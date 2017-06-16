@@ -43,3 +43,18 @@ akka {
   }
 
 }
+
+cassandra-journal {
+  contact-points = [
+    <%= (node['cassandra']['contact_points'].map do |node|
+       "\"#{node}\""
+    end).join(",\n    ") %>
+  ]
+}
+cassandra-snapshot-store {
+  contact-points = [
+    <%= (node['cassandra']['contact_points'].map do |node|
+       "\"#{node}\""
+    end).join(",\n    ") %>
+  ]
+}

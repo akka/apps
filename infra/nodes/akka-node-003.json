@@ -13,6 +13,10 @@
       "total_nodes": 3
     },
     
+    "cassandra": {
+      "contact_points": ["10.132.0.4", "10.132.0.6"]
+    },
+    
     "authorization": {
       "sudo": {
         "users": ["akka", "ubuntu", "ktoso", "patriknw"],
@@ -28,8 +32,7 @@
       "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
     },
     "run_list": [
-        "role[benchmark]",
-        "role[benchmark-sharding]",
+        "role[benchmark]", "role[benchmark-sharding]",
         "role[gce-tools]"
     ]
 }
