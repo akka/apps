@@ -1,7 +1,7 @@
 {
     "chef_environment": "_default", 
-    "ipaddress-internal": "", 
-    "ipaddress": "", 
+    "ipaddress-internal": "10.132.0.7", 
+    "ipaddress": "130.211.60.175", 
     "name": "akka-node-001", 
     
     "akka": {
