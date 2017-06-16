@@ -1,7 +1,7 @@
 {
     "chef_environment": "_default", 
-    "ipaddress-internal": "10.132.0.9", 
-    "ipaddress": "130.211.96.195", 
+    "ipaddress-internal": "", 
+    "ipaddress": "", 
     "name": "akka-node-003", 
     
     "akka": {
@@ -11,6 +11,10 @@
       
       "seed_nodes": ["10.132.0.7", "10.132.0.8"],
       "total_nodes": 3
+    },
+    
+    "cassandra": {
+      "contact_points": ["10.132.0.4", "10.132.0.6"]
     },
     
     "authorization": {
@@ -28,8 +32,7 @@
       "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
     },
     "run_list": [
-        "role[benchmark]",
-        "role[benchmark-sharding]",
+        "role[benchmark]", "role[benchmark-sharding]",
         "role[gce-tools]"
     ]
 }

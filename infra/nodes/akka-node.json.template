@@ -13,6 +13,10 @@
       "total_nodes": TOTAL_NODES
     },
     
+    "cassandra": {
+      "contact_points": CASSANDRA_CONTACT_POINTS
+    },
+    
     "authorization": {
       "sudo": {
         "users": ["akka", "ubuntu", "ktoso", "patriknw"],

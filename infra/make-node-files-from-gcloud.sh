@@ -6,6 +6,23 @@
 #
 # EXTRA_RUNLIST='"role[benchmark-ddata]",' ./make-node-files-from-gcloud.sh akka-node-01 '["10.154.0.2"]'
 
+
+# -------------------- functions --------------------  
+json_append() {
+  local old_json=$1; shift
+  local count=0
+  local -a args=( )
+  local elem_names=''
+  while (( $# )); do
+    args+=( --arg "element$((++count))" "$1" )
+    elem_names+="\$element$count, "
+    shift
+  done
+
+  jq "${args[@]}" ". + [ ${elem_names%, } ]" <<<"${old_json:-[]}"
+}
+# ----------------- end of functions -----------------  
+
 if [[ "$#" != "2" ]]; then
   echo "USAGE: ./make-node-files-from-gcloud.sh GREP SEED_NODES"
   echo "EXTRA PARAMS:"
@@ -15,10 +32,18 @@ fi
 declare -r GREP=$1
 declare -r SEED_NODES=$2
 
-declare -r TOTAL_NODES=$(gcloud compute instances list | grep $GREP | wc -l | awk '{print $1}')
+declare -r TOTAL_NODES_NUM=$(gcloud compute instances list | grep $GREP | wc -l | awk '{print $1}')
 
+# cassandra contact points as json (just the first ... nodes)
+declare -r CASSANDRA_CONTACT_POINTS_NUM=2
+declare -r CASSANDRA_CONTACT_POINTS=$(
+  gcloud compute instances list |
+    grep "cassandra" | grep RUNNING |
+    awk ' {print $4 } ' |
+    head -n${CASSANDRA_CONTACT_POINTS_NUM} | 
+    awk ' BEGIN { ORS = ""; print "["; } { print "\/\@"$0"\/\@"; } END { print "]"; }' | sed "s^\"^\\\\\"^g;s^\/\@\/\@^\", \"^g;s^\/\@^\"^g" 
+  )
 
-IFS=$'\n'       # make newlines the only separator
 for node in $(gcloud compute instances list | grep $GREP | awk ' { print $1,$4,$5 } ')
 do
   name=$(echo $node | awk ' { print $1} ')
@@ -30,7 +55,8 @@ do
     sed "s/INTERNAL_IP/$internal_ip/g" |
     sed "s/AKKA_SEED_NODES/$SEED_NODES/g" |
     sed "s/EXTRA_RUNLIST/$EXTRA_RUNLIST/g" |
-    sed "s/TOTAL_NODES/$TOTAL_NODES/g" |
+    sed "s/CASSANDRA_CONTACT_POINTS/$CASSANDRA_CONTACT_POINTS/g" |
+    sed "s/TOTAL_NODES/$TOTAL_NODES_NUM/g" |
     sed "s/EXTERNAL_IP/$external_ip/g" > ./nodes/$name.json 
     
     echo "Generated: ./nodes/$name.json" 
