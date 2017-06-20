@@ -45,7 +45,7 @@ class PubSubHost(numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribe
   val publishersOnThisNode = numberOfPublishers / NumNodes
 
   val subscribers = (0 until subscribersOnThisNode).map(n => context.actorOf(Subscriber.props(n % numberOfTopics, mediator, coordinator), s"subscriber-$n"))
-  val publishers = (0 until publishersOnThisNode).map(n => context.actorOf(Publisher.props(n % numberOfTopics, coordinator), s"publisher-$n"))
+  val publishers = (0 until publishersOnThisNode).map(n => context.actorOf(Publisher.props(Math.min(subscribersOnThisNode, numberOfTopics), coordinator), s"publisher-$n"))
 
   def receive = {
     case _ => ???
