@@ -41,13 +41,13 @@ object PubSubBenchmark extends App {
   val system = ActorSystem(systemName, conf)
 
   Cluster(system).registerOnMemberUp {
-    val numberOfPublishers = 500
-    val numberOfSubscribers = 500
-    val messagesPerPublisher = 100
+    val numberOfPublishers = 50
+    val numberOfSubscribers = 50
+    val messagesPerPublisher = 1000
 
     // We won't hit this number if we don't have sufficient publishers/subscribers though, we'll
     // want publishers and subscribers to associate with multiple topics.
-    val numberOfTopics = 10000
+    val numberOfTopics = 100
     require(numberOfSubscribers <= numberOfPublishers || numberOfSubscribers <= numberOfTopics)
 
     system.actorOf(

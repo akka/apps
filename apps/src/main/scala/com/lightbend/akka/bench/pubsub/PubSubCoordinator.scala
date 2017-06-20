@@ -26,6 +26,7 @@ import akka.cluster.pubsub._
 
 
 object PubSubCoordinator {
+  case object StartPublishing
   case object CollectResults
 
   def props(messagesPerPublisher: Int, numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribers: Int): Props =
@@ -43,17 +44,24 @@ class PubSubCoordinator(messagesPerPublisher: Int, numberOfTopics: Int, numberOf
 
   def subscribing(subscribers: Set[ActorRef], publishers: Set[ActorRef], waitingForSubscribers: Int, waitingForPublishers: Int): Receive =
     if (waitingForSubscribers == 0 && waitingForPublishers == 0) {
-      log.info(s"${subscribers.size} subscribers and ${publishers.size} publishers initialized, publishing messages")
-      publishers.foreach(publisher => {
-        (0 until messagesPerPublisher).foreach(_ => publisher ! Publisher.Tick)
-      })
-      context.system.scheduler.scheduleOnce(10.seconds, self, CollectResults)
-      waiting(subscribers)
+      log.info(s"${subscribers.size} subscribers and ${publishers.size} publishers initialized, allowing for subscriber information to propagate")
+      context.system.scheduler.scheduleOnce(20.seconds, self, StartPublishing)
+      pausing(publishers, subscribers)
     } else {
     case Publisher.Started(publisher) =>
       context.become(subscribing(subscribers, publishers + publisher, waitingForSubscribers, waitingForPublishers - 1))
     case Subscriber.Subscribed =>
       context.become(subscribing(subscribers + sender(), publishers, waitingForSubscribers - 1, waitingForPublishers))
+  }
+
+  def pausing(publishers: Set[ActorRef], subscribers: Set[ActorRef]): Receive = {
+    case StartPublishing =>
+      log.info(s"Initiating publishing")
+      publishers.foreach(publisher => {
+        (0 until messagesPerPublisher).foreach(_ => publisher ! Publisher.Tick)
+      })
+      context.system.scheduler.scheduleOnce(10.seconds, self, CollectResults)
+      context.become(waiting(subscribers))
   }
 
   def waiting(subscribers: Set[ActorRef]): Receive = {
