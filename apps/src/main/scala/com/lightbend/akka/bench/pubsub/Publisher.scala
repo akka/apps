@@ -16,6 +16,7 @@
 
 package com.lightbend.akka.bench.pubsub
 
+import scala.util.Random
 import scala.concurrent.duration._
 import akka.actor._
 import akka.cluster.pubsub._
@@ -23,14 +24,13 @@ import akka.cluster.pubsub._
 import scala.concurrent.ExecutionContext
 
 object Publisher {
-  def props(topic: Int, coordinator: ActorRef): Props = props(topic.toString, coordinator)
-  def props(topic: String, coordinator: ActorRef): Props = Props(new Publisher(topic, coordinator))
+  def props(maxTopic: Int, coordinator: ActorRef): Props = Props(new Publisher(maxTopic, coordinator))
 
   case class Started(publisher: ActorRef)
   case class Start(messagesToPublish: Int)
   case object Tick
 }
-class Publisher(topic: String, coordinator: ActorRef) extends Actor with ActorLogging {
+class Publisher(maxTopic: Int, coordinator: ActorRef) extends Actor with ActorLogging {
   import Publisher._
   import DistributedPubSubMediator.Publish
 
@@ -45,6 +45,7 @@ class Publisher(topic: String, coordinator: ActorRef) extends Actor with ActorLo
 
   // activate the extension
   val mediator = DistributedPubSub(context.system).mediator
+  val random = new Random()
 
   override def receive = {
     case Start(messagesToPublish) =>
@@ -54,7 +55,7 @@ class Publisher(topic: String, coordinator: ActorRef) extends Actor with ActorLo
 
   def ticking(cancellable: Cancellable, ticksLeft: Int): Receive = {
     case Tick =>
-      mediator ! Publish(topic, Payload(42))
+      mediator ! Publish(random.nextInt(maxTopic).toString, Payload(42))
       if (ticksLeft == 1) {
         cancellable.cancel()
         context.stop(self)
