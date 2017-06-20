@@ -45,11 +45,11 @@ class PubSubCoordinator(messagesPerPublisher: Int, numberOfTopics: Int, numberOf
   def subscribing(subscribers: Set[ActorRef], publishers: Set[ActorRef], waitingForSubscribers: Int, waitingForPublishers: Int): Receive =
     if (waitingForSubscribers == 0 && waitingForPublishers == 0) {
       log.info(s"${subscribers.size} subscribers and ${publishers.size} publishers initialized, allowing for subscriber information to propagate")
-      context.system.scheduler.scheduleOnce(20.seconds, self, StartPublishing)
+      context.system.scheduler.scheduleOnce(10.seconds, self, StartPublishing)
       pausing(publishers, subscribers)
     } else {
     case Publisher.Started(publisher) =>
-      context.become(subscribing(subscribers, publishers + publisher, waitingForSubscribers, waitingForPublishers - 1))
+      context.become(subscribing(subscribers, publishers + sender(), waitingForSubscribers, waitingForPublishers - 1))
     case Subscriber.Subscribed =>
       context.become(subscribing(subscribers + sender(), publishers, waitingForSubscribers - 1, waitingForPublishers))
   }
@@ -57,10 +57,8 @@ class PubSubCoordinator(messagesPerPublisher: Int, numberOfTopics: Int, numberOf
   def pausing(publishers: Set[ActorRef], subscribers: Set[ActorRef]): Receive = {
     case StartPublishing =>
       log.info(s"Initiating publishing")
-      publishers.foreach(publisher => {
-        (0 until messagesPerPublisher).foreach(_ => publisher ! Publisher.Tick)
-      })
-      context.system.scheduler.scheduleOnce(10.seconds, self, CollectResults)
+      publishers.foreach(_ ! Publisher.Start(messagesPerPublisher))
+      context.system.scheduler.scheduleOnce(20.seconds, self, CollectResults)
       context.become(waiting(subscribers))
   }
 
