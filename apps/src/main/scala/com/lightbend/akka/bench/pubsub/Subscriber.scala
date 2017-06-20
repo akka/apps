@@ -16,26 +16,36 @@
 
 package com.lightbend.akka.bench.pubsub
 
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
+import scala.util.Random
 import akka.actor._
 import akka.cluster.pubsub._
-import DistributedPubSubMediator.{ Subscribe, SubscribeAck }
+import akka.pattern.{ask, pipe}
+import akka.util.Timeout
+import DistributedPubSubMediator.{Subscribe, SubscribeAck}
 
 object Subscriber {
-  def props(topic: Int, mediator: ActorRef, coordinator: ActorRef): Props = props(topic.toString, mediator, coordinator)
-  def props(topic: String, mediator: ActorRef, coordinator: ActorRef): Props = Props(new Subscriber(topic, mediator, coordinator))
+  def props(topic: Int, topicUntil: Int, mediator: ActorRef, coordinator: ActorRef): Props = Props(new Subscriber(topic, topicUntil, mediator, coordinator))
 
   case object Subscribed
   case object CollectStats
 }
-class Subscriber(topic: String, mediator: ActorRef, coordinator: ActorRef) extends Actor with ActorLogging {
+class Subscriber(topic: Int, topicUntil: Int, mediator: ActorRef, coordinator: ActorRef) extends Actor with ActorLogging {
   import Subscriber._
 
   var messagesReceived = 0
+  val random = new Random()
 
-  mediator ! Subscribe(topic, self)
+  implicit val timeout: Timeout = 5.seconds
+  implicit val ec: ExecutionContext = context.dispatcher
+
+  Future.sequence((topic until topicUntil).map { n =>
+    mediator ? Subscribe(n.toString, self)
+  }).pipeTo(self)
 
   override def receive = {
-    case SubscribeAck(Subscribe(topic, None, `self`)) ⇒
+    case _: Seq[_] ⇒
       coordinator ! Subscribed
     case Payload(n) =>
       messagesReceived += 1
