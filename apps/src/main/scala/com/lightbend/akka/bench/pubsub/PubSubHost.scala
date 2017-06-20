@@ -41,8 +41,11 @@ class PubSubHost(numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribe
       settings = ClusterSingletonProxySettings(context.system)),
     name = "coordinatorProxy")
 
-  val subscribers = (0 until (numberOfSubscribers / NumNodes)).map(n => context.actorOf(Subscriber.props(n % numberOfTopics, mediator, coordinator)))
-  val publishers = (0 until numberOfPublishers / NumNodes).map(n => context.actorOf(Publisher.props(n % numberOfTopics, coordinator)))
+  val subscribersOnThisNode = numberOfSubscribers / NumNodes
+  val publishersOnThisNode = numberOfPublishers / NumNodes
+
+  val subscribers = (0 until subscribersOnThisNode).map(n => context.actorOf(Subscriber.props(n % numberOfTopics, mediator, coordinator), s"subscriber-$n"))
+  val publishers = (0 until publishersOnThisNode).map(n => context.actorOf(Publisher.props(n % numberOfTopics, coordinator), s"publisher-$n"))
 
   def receive = {
     case _ => ???

@@ -26,11 +26,16 @@ object Publisher {
   case class Started(publisher: ActorRef)
   case object Tick
 }
-class Publisher(topic: String, coordinator: ActorRef) extends Actor {
+class Publisher(topic: String, coordinator: ActorRef) extends Actor with ActorLogging {
   import Publisher._
   import DistributedPubSubMediator.Publish
 
-  coordinator ! Started(self)
+  override def preStart() = {
+//    log.info(s"Started publisher for $topic under $self")
+    coordinator ! Started(self)
+  }
+
+  override def postStop() = log.info(s"Publisher stopped")
 
   // activate the extension
   val mediator = DistributedPubSub(context.system).mediator
