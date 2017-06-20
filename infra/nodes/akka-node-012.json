@@ -1,25 +1,24 @@
 {
-    "chef_environment": "_default", 
-    "ipaddress-internal": "10.154.0.4", 
-    "ipaddress": "35.189.69.146", 
-    "name": "akka-node-012", 
-    
+    "chef_environment": "_default",
+    "ipaddress-internal": "10.154.0.4",
+    "ipaddress": "35.189.69.146",
+    "name": "akka-node-012",
+
     "akka": {
       "system_name": "BenchmarkSystem",
-      "port": 2551,      
+      "port": 2551,
       "roles": [],
 
       "seed_nodes": ["10.154.0.2"],
       "total_nodes": 6
     },
-    
+
     "authorization": {
       "sudo": {
         "users": ["akka", "ubuntu", "ktoso", "patriknw"],
         "passwordless": "true"
       }
     },
-    
     "java": {
       "jdk_version": 8,
       "oracle": {

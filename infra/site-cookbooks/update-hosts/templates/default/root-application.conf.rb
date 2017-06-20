@@ -23,6 +23,13 @@ akka {
   } 
 
   cluster {
+    
+    roles = [
+      <%= (node['akka']['roles'].map do |role|
+        "\"#{role}\"" 
+      end).join(",\n      ") %>
+    ]
+
     seed-nodes = [
       <%= (node['akka']['seed_nodes'].map do |seed|
          "\"akka://#{node['akka']['system_name']}@#{seed}:#{node['akka']['port']}\""
@@ -35,4 +42,19 @@ akka {
     }
   }
 
+}
+
+cassandra-journal {
+  contact-points = [
+    <%= (node['cassandra']['contact_points'].map do |node|
+       "\"#{node}\""
+    end).join(",\n    ") %>
+  ]
+}
+cassandra-snapshot-store {
+  contact-points = [
+    <%= (node['cassandra']['contact_points'].map do |node|
+       "\"#{node}\""
+    end).join(",\n    ") %>
+  ]
 }

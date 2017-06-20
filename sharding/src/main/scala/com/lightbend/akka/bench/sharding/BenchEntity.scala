@@ -23,11 +23,11 @@ import akka.persistence.{PersistentActor, RecoveryCompleted}
 object BenchEntity {
 
   // commands
-  trait EntityCommand { def id: String }
-  trait PingLike { def sentTimestamp: Long }
-  case class Ping(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
-  case class PersistAndPing(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
-  case class Pong(original: PingLike)
+  sealed trait EntityCommand { def id: String }
+  sealed trait PingLike { def sentTimestamp: Long }
+  final case class Ping(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
+  final case class PersistAndPing(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
+  final case class Pong(original: PingLike)
 
   // events
   case class PingObserved(sentTimestamp: Long)
@@ -50,7 +50,7 @@ object BenchEntity {
     ClusterSharding(system).start(
       typeName,
       BenchEntity.props(),
-      ClusterShardingSettings(system),
+      ClusterShardingSettings(system).withRole("shard"),
       extractEntityId,
       extractShardId(BenchSettings(system).NumberOfShards)
     )
@@ -59,7 +59,7 @@ object BenchEntity {
     ClusterSharding(system)
       .startProxy(
         typeName,
-        None,
+        Some("shard"),
         extractEntityId,
         extractShardId(BenchSettings(system).NumberOfShards)
       )

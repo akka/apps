@@ -63,9 +63,11 @@ git checkout 1b9ad65
 /home/akka/run-multinode-benchmark.sh "-Dtest=051-b -Daeron.term.buffer.length=4194304 -Daeron.term.buffer.sparse.file=true -Dakka.remote.artery.advanced.inbound-lanes=4"
 
 # term buffer min value
-/home/akka/run-multinode-benchmark.sh "-Dtest=051-a -Daeron.term.buffer.length=65536 -Daeron.term.buffer.sparse.file=true -Dakka.remote.artery.advanced.inbound-lanes=4"
-/home/akka/run-multinode-benchmark.sh "-Dtest=051-a -Daeron.term.buffer.length=65536 -Daeron.term.buffer.sparse.file=true -Dakka.remote.artery.advanced.inbound-lanes=4"
+/home/akka/run-multinode-benchmark.sh "-Dtest=052-a -Daeron.term.buffer.length=65536 -Daeron.term.buffer.sparse.file=true -Dakka.remote.artery.advanced.inbound-lanes=4"
+/home/akka/run-multinode-benchmark.sh "-Dtest=052-a -Daeron.term.buffer.length=65536 -Daeron.term.buffer.sparse.file=true -Dakka.remote.artery.advanced.inbound-lanes=4"
 
 cd /home/akka/akka
 git checkout wip-gcloud-bench-patriknw
 cd /home/akka
+
+zip -r "/home/akka/log/logs-$(date '+20%y-%m-%d--%H%M').zip" /home/akka/log/* -x "*.logbuffer" -x "*.zip"

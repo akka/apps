@@ -74,7 +74,7 @@ declare -r MEDIA_DRIVER_ARGS="-Daeron.threading.mode=SHARED_NETWORK -Xms1g -Xmx1
 
 declare -r MULTI_NODE_DIR="/home/akka/tmp-akka-multi-node"
 declare -r MULTI_NODE_ARGS="-Dakka.test.multi-node=true -Dakka.test.multi-node.targetDirName=$MULTI_NODE_DIR -Dakka.remote.artery.advanced.flight-recorder.destination=target -Dmultinode.Xms1024M -Dmultinode.Xmx1024M -Dmultinode.XX:+PrintGCDetails -Dmultinode.XX:+PrintGCTimeStamps -Dmultinode.XX:BiasedLockingStartupDelay=0 -Dmultinode.Daeron.mtu.length=16384 -Dmultinode.Daeron.rcv.buffer.length=16384 -Dmultinode.Daeron.socket.so_sndbuf=2097152 -Dmultinode.Daeron.socket.so_rcvbuf=2097152 -Dmultinode.Daeron.rcv.initial.window.length=2097152 -Dmultinode.Dagrona.disable.bounds.checks=true -Dmultinode.XX:+UseCompressedOops -Dmultinode.XX:MaxDirectMemorySize=256m -Dmultinode.XX:+UnlockDiagnosticVMOptions -Dmultinode.XX:GuaranteedSafepointInterval=300000"
-declare -r COMMON_ARGS="-Dakka.test.LatencySpec.totalMessagesFactor=30 -Dakka.test.MaxThroughputSpec.totalMessagesFactor=200 -Dakka.remote.artery.advanced.embedded-media-driver=off -Dakka.remote.artery.advanced.aeron-dir=$AERON_DIR"
+declare -r COMMON_ARGS="-Dakka.test.LatencySpec.totalMessagesFactor=10 -Dakka.test.LatencySpec.repeatCount=3 -Dakka.test.MaxThroughputSpec.totalMessagesFactor=200 -Dakka.remote.artery.advanced.embedded-media-driver=off -Dakka.remote.artery.advanced.aeron-dir=$AERON_DIR"
 #declare -r COMMON_ARGS="-Dakka.remote.artery.advanced.embedded-media-driver=off -Dakka.remote.artery.advanced.aeron-dir=$AERON_DIR"
 
 #declare -r ARGS="-Dakka.remote.artery.advanced.inbound-lanes=1"
