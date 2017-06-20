@@ -58,7 +58,7 @@ class Publisher(maxTopic: Int, coordinator: ActorRef) extends Actor with ActorLo
       mediator ! Publish(random.nextInt(maxTopic).toString, Payload(42))
       if (ticksLeft == 1) {
         cancellable.cancel()
-        context.stop(self)
+        self ! PoisonPill
       } else {
         context.become(ticking(cancellable, ticksLeft - 1))
       }
