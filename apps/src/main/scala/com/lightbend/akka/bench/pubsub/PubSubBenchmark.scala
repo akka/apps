@@ -45,9 +45,7 @@ object PubSubBenchmark extends App {
     val numberOfSubscribers = 50
     val messagesPerPublisher = 1000
 
-    // We won't hit this number if we don't have sufficient publishers/subscribers though, we'll
-    // want publishers and subscribers to associate with multiple topics.
-    val numberOfTopics = 100
+    val numberOfTopics = 50000
     require(numberOfSubscribers <= numberOfPublishers || numberOfSubscribers <= numberOfTopics)
 
     system.actorOf(

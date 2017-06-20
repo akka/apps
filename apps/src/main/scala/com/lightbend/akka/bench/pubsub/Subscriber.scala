@@ -46,6 +46,7 @@ class Subscriber(topic: Int, topicUntil: Int, mediator: ActorRef, coordinator: A
 
   override def receive = {
     case _: Seq[_] ⇒
+      log.info(s"Subscribed to $topic-$topicUntil")
       coordinator ! Subscribed
     case Payload(n) =>
       messagesReceived += 1
