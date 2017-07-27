@@ -3,9 +3,9 @@
         "ipaddress": ""
     }, 
     "chef_environment": "_default", 
-    "ipaddress-internal": "10.128.0.5", 
+    "ipaddress-internal": "10.128.0.6", 
     "ipaddress": "RUNNING", 
-    "name": "RUNNING", 
+    "name": "10.128.0.6", 
     "java": {
       "jdk_version": 8,
       "oracle": {
@@ -14,7 +14,7 @@
       "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
     },
     "cassandra": {
-        "seed_node": "10.128.0.3",
+      "seed_node": "10.128.0.4",
       "install_java": false,
       "config": {
         "cluster_name": "akka-cassandra"

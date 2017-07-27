@@ -6,6 +6,16 @@
 #
 # All rights reserved - Do Not Redistribute
 
+
+user "cassandra" do 
+  home '/home/cassandra'
+  shell '/bin/bash'
+  password 'cassandra'
+  action :create
+  manage_home true
+end
+
+
 bash 'install cassandra apt repo' do
   code <<-EOH
   echo "deb http://www.apache.org/dist/cassandra/debian 310x main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
