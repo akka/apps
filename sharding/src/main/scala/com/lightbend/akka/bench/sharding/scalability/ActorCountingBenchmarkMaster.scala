@@ -1,12 +1,12 @@
 package com.lightbend.akka.bench.sharding.scalability
 
 import java.util
-import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration._
 import akka.actor.{ Actor, ActorLogging, ActorRef }
 import akka.cluster.Cluster
 import com.lightbend.akka.bench.sharding.BenchSettings
+
+import scala.concurrent.duration._
 
 class ActorCountingBenchmarkMaster extends Actor with ActorLogging {
   implicit val dispatcher = context.system.dispatcher
