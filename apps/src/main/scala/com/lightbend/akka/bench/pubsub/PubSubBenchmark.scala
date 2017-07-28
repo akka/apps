@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package com.lightbend.akka.bench.ddata
+package com.lightbend.akka.bench.pubsub
+
+import scala.util.Try
 
 import akka.actor.{ ActorSystem, PoisonPill, Props }
 import akka.cluster.Cluster
@@ -23,11 +25,8 @@ import java.io.File
 import akka.cluster.singleton.{ ClusterSingletonManager, ClusterSingletonManagerSettings }
 import com.typesafe.config.ConfigFactory
 
-import scala.util.Try
-
-object DistributedDataBenchmark extends App {
-
-  final val CoordinatorManager = "coordinatorManager"
+object PubSubBenchmark extends App {
+  final val CoordinatorManager = "pubSubCoordinatorManager"
 
   // setup for clound env -------------------------------------------------------------
   val rootConfFile = new File("/home/akka/root-application.conf")
@@ -38,19 +37,25 @@ object DistributedDataBenchmark extends App {
   val conf = rootConf.withFallback(ConfigFactory.load())
   // end of setup for clound env ------------------------------------------------------
 
-  val systemName = Try(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
+  val systemName = Try(conf.getString("akka.system-name")).getOrElse("Benchmark")
   val system = ActorSystem(systemName, conf)
 
-
   Cluster(system).registerOnMemberUp {
-    system.actorOf(Props[DDataHost], DDataHost.Name)
+    val numberOfPublishers = 50
+    val numberOfSubscribers = 50
+    val messagesPerPublisher = 1000
+
+    val numberOfTopics = 50000
+    require(numberOfSubscribers <= numberOfPublishers || numberOfSubscribers <= numberOfTopics)
 
     system.actorOf(
       ClusterSingletonManager.props(
-        singletonProps = Props[DDataBenchmarkCoordinator],
+        singletonProps = PubSubCoordinator.props(messagesPerPublisher = messagesPerPublisher, numberOfTopics = numberOfTopics, numberOfPublishers = numberOfPublishers, numberOfSubscribers = numberOfSubscribers),
         terminationMessage = PoisonPill,
         settings = ClusterSingletonManagerSettings(system)),
       name = CoordinatorManager)
+
+    system.actorOf(PubSubHost.props(numberOfTopics = numberOfTopics, numberOfPublishers = numberOfPublishers, numberOfSubscribers = numberOfSubscribers), PubSubHost.name)
   }
 
   scala.io.StdIn.readLine() // TODO not sure if readline will work well with starting it via scripts...
