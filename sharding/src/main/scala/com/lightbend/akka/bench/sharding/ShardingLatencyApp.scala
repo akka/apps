@@ -17,6 +17,7 @@
 package com.lightbend.akka.bench.sharding
 
 import java.io.File
+import java.net.InetAddress
 
 import akka.actor.{ ActorSystem, Props }
 import akka.cluster.Cluster
@@ -28,15 +29,26 @@ import scala.util.Try
 object ShardingLatencyApp extends App {
 
   // setup for clound env -------------------------------------------------------------
+  val bindAddressConf = ConfigFactory.parseString(
+    s"""
+     akka {
+       remote {
+         artery.canonical.hostname = "${InetAddress.getLocalHost.getHostAddress}"
+       }
+     }
+    """)
+  
   val rootConfFile = new File("/home/akka/root-application.conf")
   val rootConf =
     if (rootConfFile.exists) ConfigFactory.parseFile(rootConfFile)
     else ConfigFactory.empty("no-root-application-conf-found")
 
-  val conf = rootConf.withFallback(ConfigFactory.load())
+  val conf = bindAddressConf
+    .withFallback(rootConf
+      .withFallback(ConfigFactory.load()))
   // end of setup for clound env ------------------------------------------------------ 
 
-  val systemName = Try(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
+  val systemName = Try(conf.getString("akka.system-name")).getOrElse("ShardingLatencySystem")
   implicit val system = ActorSystem(systemName, conf)
   
   // management -----------
