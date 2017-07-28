@@ -9,6 +9,7 @@ import akka.cluster.Cluster
 import com.lightbend.akka.bench.sharding.BenchSettings
 
 class ActorCountingBenchmarkMaster extends Actor with ActorLogging {
+  implicit val dispatcher = context.system.dispatcher
   val settings = BenchSettings(context.system)
   val addActorsBatch: Int = settings.AddActorsPerBatch
   val addActorsInterval: FiniteDuration = settings.AddActorsInterval
