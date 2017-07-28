@@ -7,8 +7,8 @@
 
 # fix config on given node:
 #
-#for node_number in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
-#do
+for node_number in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
+do
 #  ssh 10.128.0.${node_number}
 #  
 #     sudo service cassandra stop
@@ -28,8 +28,6 @@
 #    ./$script
 #  done
 
-  node_number=04
-
   gcloud compute --project "akka-gcp" disks create "akka-cassandra-${node_number}" --size "20" \
   --zone "us-central1-a" --source-snapshot "akka-cassandra-node-snapshot" --type "pd-ssd"
 
@@ -47,7 +45,7 @@
   cassandra_external_ip=$(gcloud --project="akka-gcp" compute instances list | grep "cassandra-$node_number" | head -n1 | awk '{ print $5 }')
   
   # prepare node descriptions
-  cat nodes/cassandra.json.template |
+  cat nodes/akka-cassandra.json.template |
     sed "s/NAME/$cassandra_internal_ip/g" |   
     sed "s/CASSANDRA_SEED_IP/10.128.0.4/g" |  
     sed "s/EXTERNAL_IP/$cassandra_external_ip/g" | 
