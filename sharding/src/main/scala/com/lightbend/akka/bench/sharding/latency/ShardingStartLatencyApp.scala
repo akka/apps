@@ -14,29 +14,24 @@
  * limitations under the License.
  */
 
-package com.lightbend.akka.bench.sharding
+package com.lightbend.akka.bench.sharding.latency
 
-import java.io.File
+import java.net.InetAddress
 
 import akka.actor.{ ActorSystem, Props }
 import akka.cluster.Cluster
 import akka.cluster.http.management.ClusterHttpManagement
-import com.typesafe.config.ConfigFactory
+import com.lightbend.akka.bench.sharding.BenchmarkConfig
 
 import scala.util.Try
 
-object ShardingFailoverRestartApp extends App {
+object ShardingStartLatencyApp extends App {
 
   // setup for clound env -------------------------------------------------------------
-  val rootConfFile = new File("/home/akka/root-application.conf")
-  val rootConf =
-    if (rootConfFile.exists) ConfigFactory.parseFile(rootConfFile)
-    else ConfigFactory.empty("no-root-application-conf-found")
-
-  val conf = rootConf.withFallback(ConfigFactory.load())
+  val conf = BenchmarkConfig.load()
   // end of setup for clound env ------------------------------------------------------ 
 
-  val systemName = Try(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
+  val systemName = Try(conf.getString("akka.system-name")).getOrElse("ShardingStartLatencySystem")
   implicit val system = ActorSystem(systemName, conf)
   
   // management -----------
@@ -44,11 +39,10 @@ object ShardingFailoverRestartApp extends App {
   ClusterHttpManagement(cluster).start()
   // end of management ----
   
-  
-  if (cluster.selfRoles contains "master") { 
+  if (InetAddress.getLocalHost.getHostName contains "akka-sharding-001") { 
     system.actorOf(Props[PingLatencyCoordinator], "bench-coordinator")
   } else {
-    BenchEntity.startRegion(system)
+    LatencyBenchEntity.startRegion(system)
     system.actorOf(PersistenceHistograms.props(), "persistence-histogram-printer")
   }
 }

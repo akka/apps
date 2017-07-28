@@ -10,7 +10,7 @@
       "roles": [],
 
       "seed_nodes": AKKA_SEED_NODES,
-      "total_nodes": TOTAL_NODES
+      "minumum_nodes": minumum_nodes
     },
     
     "cassandra": {

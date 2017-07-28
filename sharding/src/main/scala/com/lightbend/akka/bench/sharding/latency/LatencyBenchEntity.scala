@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package com.lightbend.akka.bench.sharding
+package com.lightbend.akka.bench.sharding.latency
 
-import akka.actor.{ActorLogging, ActorSystem, Props}
-import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings, ShardRegion}
-import akka.persistence.{PersistentActor, RecoveryCompleted}
+import akka.actor.{ ActorLogging, ActorSystem, Props }
+import akka.cluster.sharding.{ ClusterSharding, ClusterShardingSettings, ShardRegion }
+import akka.persistence.{ PersistentActor, RecoveryCompleted }
+import com.lightbend.akka.bench.sharding.BenchSettings
 
-object BenchEntity {
+object LatencyBenchEntity {
 
   // commands
   sealed trait EntityCommand { def id: String }
@@ -32,24 +33,24 @@ object BenchEntity {
   // events
   case class PingObserved(sentTimestamp: Long)
 
-  def props() = Props[BenchEntity]
+  def props() = Props[LatencyBenchEntity]
 
 
   // sharding config
   val typeName = "bench-entity"
 
   val extractEntityId: ShardRegion.ExtractEntityId = {
-    case msg: BenchEntity.EntityCommand => (msg.id, msg)
+    case msg: LatencyBenchEntity.EntityCommand => (msg.id, msg)
   }
 
   def extractShardId(numberOfEntities: Int): ShardRegion.ExtractShardId = {
-    case msg: BenchEntity.EntityCommand => (msg.id.hashCode % numberOfEntities).toString
+    case msg: LatencyBenchEntity.EntityCommand => (msg.id.hashCode % numberOfEntities).toString
   }
 
   def startRegion(system: ActorSystem) =
     ClusterSharding(system).start(
       typeName,
-      BenchEntity.props(),
+      LatencyBenchEntity.props(),
       ClusterShardingSettings(system).withRole("shard"),
       extractEntityId,
       extractShardId(BenchSettings(system).NumberOfShards)
@@ -65,8 +66,8 @@ object BenchEntity {
       )
 }
 
-class BenchEntity extends PersistentActor with ActorLogging {
-  import BenchEntity._
+class LatencyBenchEntity extends PersistentActor with ActorLogging {
+  import LatencyBenchEntity._
 
   var persistentPingCounter = 0
 

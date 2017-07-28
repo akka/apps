@@ -10,7 +10,7 @@
       "roles": [],
 
       "seed_nodes": ["10.154.0.2"],
-      "total_nodes": 6
+      "minumum_nodes": 6
     },
 
     "authorization": {

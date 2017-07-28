@@ -32,7 +32,7 @@ fi
 declare -r GREP=$1
 declare -r SEED_NODES=$2
 
-declare -r TOTAL_NODES_NUM=$(gcloud compute instances list | grep $GREP | wc -l | awk '{print $1}')
+declare -r minumum_nodes_NUM=$(gcloud compute instances list | grep $GREP | wc -l | awk '{print $1}')
 
 # cassandra contact points as json (just the first ... nodes)
 declare -r CASSANDRA_CONTACT_POINTS_NUM=2
@@ -60,7 +60,7 @@ do
     sed "s/AKKA_SEED_NODES/$SEED_NODES/g" |
     sed "s/EXTRA_RUNLIST/$EXTRA_RUNLIST/g" |
     sed "s/CASSANDRA_CONTACT_POINTS/$CASSANDRA_CONTACT_POINTS/g" |
-    sed "s/TOTAL_NODES/$TOTAL_NODES_NUM/g"  > ./nodes/$name.json 
+    sed "s/minumum_nodes/$minumum_nodes_NUM/g"  > ./nodes/$name.json 
     
     echo "Generated: ./nodes/$name.json" 
 done
