@@ -29,28 +29,45 @@ object DistributedDataBenchmark extends App {
 
   final val CoordinatorManager = "coordinatorManager"
 
-  // setup for clound env -------------------------------------------------------------
+  // setup for cloud env -------------------------------------------------------------
+  val isMaster = Option(System.getenv("MASTER")).isDefined
   val rootConfFile = new File("/home/akka/root-application.conf")
   val rootConf = 
     if (rootConfFile.exists) ConfigFactory.parseFile(rootConfFile) 
     else ConfigFactory.empty("no-root-application-conf-found")
-  
-  val conf = rootConf.withFallback(ConfigFactory.load())
-  // end of setup for clound env ------------------------------------------------------ 
 
-  val systemName = Try(conf.getString("akka.system-name")).getOrElse("DistributedDataSystem")
-  val system = ActorSystem(systemName, conf)
+  val masterRole =
+    if (isMaster) ConfigFactory.parseString("akka.cluster.roles=[master]")
+    else ConfigFactory.empty()
+
+  val conf = masterRole.withFallback(rootConf.withFallback(ConfigFactory.load()))
+  // end of setup for cloud env ------------------------------------------------------
+
+
+  implicit val system = ActorSystem("DistributedDataSystem", conf)
   
 
-  Cluster(system).registerOnMemberUp {
+  val cluster = Cluster(system)
+
+  cluster.registerOnMemberUp {
     system.actorOf(Props[DDataHost], DDataHost.Name)
 
-    system.actorOf(
-      ClusterSingletonManager.props(
-        singletonProps = Props[DDataBenchmarkCoordinator],
-        terminationMessage = PoisonPill,
-        settings = ClusterSingletonManagerSettings(system)),
-      name = CoordinatorManager)
+    // only the "master" node runs the singleton
+    if (cluster.selfRoles("master")) {
+      system.actorOf(
+        ClusterSingletonManager.props(
+          singletonProps = Props[DDataBenchmarkCoordinator],
+          terminationMessage = PoisonPill,
+          settings = ClusterSingletonManagerSettings(system).withRole("master")),
+        name = CoordinatorManager)
+
+
+      val httpHost = conf.getString("bench.ddata.http-api.host")
+      val httpPort = conf.getInt("bench.ddata.http-api.port")
+
+      HttpApi.startServer(httpHost, httpPort)
+
+    }
   }
 
   scala.io.StdIn.readLine() // TODO not sure if readline will work well with starting it via scripts...

@@ -16,42 +16,27 @@
 
 package com.lightbend.akka.bench.ddata
 
-import java.util.concurrent.TimeUnit
-
-import akka.actor.Actor
+import akka.actor.{Actor, ActorLogging}
 import akka.cluster.Cluster
-import akka.cluster.ddata.Replicator.{WriteAll, WriteLocal, WriteMajority, WriteTo}
+import akka.cluster.ddata.Replicator._
 import akka.cluster.ddata.{DistributedData, ORSet, ORSetKey, Replicator}
-import akka.cluster.singleton.{ClusterSingletonProxy, ClusterSingletonProxySettings}
-
-import scala.concurrent.duration._
 
 object DDataHost {
 
   final val Name = "ddataHost"
 
-  case class Add(el: String)
+  case class Add(el: String, writeConsistency: WriteConsistency)
   case object Added
 
 }
 
-class DDataHost extends Actor {
+class DDataHost extends Actor with ActorLogging {
   import DDataHost._
 
   implicit val cluster = Cluster(context.system)
 
-  val writeTimeout = context.system.settings.config.getDuration("bench.ddata.write-timeout", TimeUnit.MICROSECONDS).micros
-  val writeConsistency = context.system.settings.config.getString("bench.ddata.write-consistency") match {
-    case "local" => WriteLocal
-    case "majority" => WriteMajority(writeTimeout)
-    case "all" => WriteAll(writeTimeout)
-    case numNodes => WriteTo(numNodes.toInt, writeTimeout)
-  }
-
   val coordinator = context.actorOf(
-    ClusterSingletonProxy.props(
-      singletonManagerPath = "/user/" + DistributedDataBenchmark.CoordinatorManager,
-      settings = ClusterSingletonProxySettings(context.system)),
+    DDataBenchmarkCoordinator.singletonProxyProps(context.system),
     name = "coordinatorProxy")
 
   val replicator = DistributedData(context.system).replicator
@@ -60,11 +45,15 @@ class DDataHost extends Actor {
   replicator ! Replicator.Subscribe(DataKey, self)
 
   def receive = {
-    case Add(el) =>
+    case Add(el, writeConsistency) =>
       replicator ! Replicator.Update(DataKey, ORSet.empty[String], writeConsistency)(_ + el)
 
     case c @ Replicator.Changed(DataKey) =>
+      // this is the subscribed change, not the ack on the update
       coordinator ! Added
+
+    case c @ Replicator.UpdateTimeout(DataKey, _) =>
+      log.warning("Got write timeout")
   }
 
 }

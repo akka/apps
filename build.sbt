@@ -3,26 +3,28 @@ val AkkaCom = "1.0.3"
 
 lazy val `apps-root` = project
   .in(file("."))
-  .aggregate(apps)
+  .aggregate(ddata)
   .enablePlugins(ScalafmtPlugin)
 
-lazy val apps = project
+lazy val ddata = project
   .enablePlugins(
     AutomateHeaderPlugin,
     ScalafmtPlugin)
   .settings(
     libraryDependencies ++= Seq(
-      "com.typesafe.akka"     %% "akka-cluster-sharding"     % Akka,
-      "com.typesafe.akka"     %% "akka-distributed-data"     % Akka,
-      "com.lightbend.akka"    %% "akka-split-brain-resolver" % AkkaCom,
-      "com.lightbend.akka"    %% "akka-diagnostics"          % AkkaCom,
-      "com.github.romix.akka" %% "akka-kryo-serialization"   % "0.5.1",
-      "org.hdrhistogram"       % "HdrHistogram"              % "2.1.9"
+      "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
+      "com.typesafe.akka"     %% "akka-distributed-data"        % Akka,
+      "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,
+      "com.lightbend.akka"    %% "akka-diagnostics"             % AkkaCom,
+      "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
+      "org.hdrhistogram"       % "HdrHistogram"                 % "2.1.9",
+      "com.lightbend.akka"    %% "akka-management-cluster-http" % "0.3",
+      "com.typesafe.akka"     %% "akka-http"                    % "10.0.3"
     )
   )
   .enablePlugins(JavaAppPackaging)
 
-lazy val sharding = project.enablePlugins(apps.plugins)
+lazy val sharding = project.enablePlugins(ddata.plugins)
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
