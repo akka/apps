@@ -43,8 +43,10 @@ class PingLatencyCoordinator extends Actor with ActorLogging {
   override def receive: Receive = {
     case m: MemberUp =>
       seenUpNodes += 1
+      log.info("Number of UP nodes: [{}]", seenUpNodes)
+
       // don't start benching until all nodes up
-      if (seenUpNodes == BenchSettings(system).TotalNodes) {
+      if (seenUpNodes == BenchSettings(system).MinimumNodes) {
         log.info("Saw [{}] nodes UP starting bench", seenUpNodes)
         context.watch(system.actorOf(PingingActor.props(), "pinging-actor"))
         context.become(benchmarking)
@@ -80,7 +82,7 @@ class PingingActor extends Actor with ActorLogging {
   val killSwitch =
     Source(0L to settings.NumberOfPings)
       // just chill a bit to give sharding time to start, doesn't really belong here but whatever
-      .initialDelay(10.second)
+      .initialDelay(2.seconds)
       .throttle(settings.PingsPerSecond / 20, 50.millis, settings.PingsPerSecond, ThrottleMode.shaping)
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.foreach { n =>

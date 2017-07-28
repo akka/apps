@@ -6,23 +6,24 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import akka.actor.{ Actor, ActorLogging, ActorRef }
 import akka.cluster.Cluster
+import com.lightbend.akka.bench.sharding.BenchSettings
 
 class ActorCountingBenchmarkMaster extends Actor with ActorLogging {
-  val config = context.system.settings.config
-  val addActorsBatch = config.getInt("shard-bench.add-actors-batch")
-  val addActorsInterval = config.getDuration("shard-bench.add-actors-interval", TimeUnit.MILLISECONDS).millis
+  val settings = BenchSettings(context.system)
+  val addActorsBatch: Int = settings.AddActorsPerBatch
+  val addActorsInterval: FiniteDuration = settings.AddActorsInterval
   
   val cluster = Cluster(context.system)
   
   // number of actors we sent a message to (so they should start in sharding)
-  var totalStartingActorsInSharding = 0
+  var totalStartingActorsInSharding = 0L
   // number of actors who have not yet replied back that they've started
-  var pendingAliveConfirmation = 0
-  var totalAliveConfirmedActors = 0
+  var pendingAliveConfirmation = 0L
+  var totalAliveConfirmedActors = 0L
   val timesWhenWeStartedBatch = new util.ArrayDeque[Long](10) 
   
   override def preStart(): Unit = {
-    context.system.scheduler.schedule(addActorsInterval, addActorsInterval, self, AddMoreActors)
+    context.system.scheduler.schedule(0.seconds, addActorsInterval, self, AddMoreActors)
   }
   
   val sharding: ActorRef = ActorCountingEntity.proxy(context.system)
@@ -44,7 +45,7 @@ class ActorCountingBenchmarkMaster extends Actor with ActorLogging {
       log.info(
         s"Adding:+${addActorsBatch} actors. " +
           s"Total actors before:[${totalStartingActorsInSharding}]. " +
-          s"STILL pending alive-confirmation:[${pendingAliveConfirmation}] (so ${, pendingAliveConfirmation + addActorsBatch} now). " +
+          s"STILL pending alive-confirmation:[${pendingAliveConfirmation}] (so ${pendingAliveConfirmation + addActorsBatch} now). " +
           s"At cluster size:${cluster.state.members.size} nodes)") 
       
       timesWhenWeStartedBatch.addLast(System.nanoTime())

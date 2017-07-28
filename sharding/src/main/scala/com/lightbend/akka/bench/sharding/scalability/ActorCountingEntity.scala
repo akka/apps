@@ -6,9 +6,9 @@ import com.lightbend.akka.bench.sharding.BenchSettings
 
 object ActorCountingEntity {
 
-  sealed trait HasId { def id: String }
+  sealed trait HasId { def id: Long }
   // sent from master to entity
-  final case class Start(id: Integer, sentTimestamp: Long) extends HasId
+  final case class Start(override val id: Long, sentTimestamp: Long) extends HasId
   // entity replies with that once it has started, the time is the sender's time, 
   // so the sender can calculate how long it took for the actor to get the message
   final case class Ready(sentTimestamp: Long)
@@ -19,7 +19,7 @@ object ActorCountingEntity {
   val typeName = "bench-entity"
 
   val extractEntityId: ShardRegion.ExtractEntityId = {
-    case msg: ActorCountingEntity.HasId => (msg.id, msg)
+    case msg: ActorCountingEntity.HasId => (msg.id.toString, msg)
   }
 
   def extractShardId(numberOfShards: Int): ShardRegion.ExtractShardId = {

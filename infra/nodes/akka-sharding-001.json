@@ -10,7 +10,7 @@
       "roles": ["master"],
       
       "seed_nodes": ["10.128.0.23"],
-      "total_nodes": 3
+      "minumum_nodes": 3
     },
     
     "cassandra": {
