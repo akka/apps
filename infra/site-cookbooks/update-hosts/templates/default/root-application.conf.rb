@@ -7,7 +7,7 @@ akka {
   system-name = "<%= node['akka']['system_name'] %>"
 
   # total number of nodes this benchmark will run on (same as number of nodes in multi-node-test.hosts)
-  total-nodes = <%= node['akka']['total_nodes'] %>
+  minimum-nodes = <%= node['akka']['minumum_nodes'] %>
   
   remote {
     netty.tcp {

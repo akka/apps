@@ -14,41 +14,25 @@
  * limitations under the License.
  */
 
-package com.lightbend.akka.bench.sharding
+package com.lightbend.akka.bench.sharding.scalability
 
-import java.io.File
 import java.net.InetAddress
 
 import akka.actor.{ ActorSystem, Props }
 import akka.cluster.Cluster
 import akka.cluster.http.management.ClusterHttpManagement
-import com.typesafe.config.ConfigFactory
+import com.lightbend.akka.bench.sharding.BenchmarkConfig
+import com.lightbend.akka.bench.sharding.latency.PingLatencyCoordinator
 
 import scala.util.Try
 
-object ShardingLatencyApp extends App {
+object ShardingActorCountScalabilityApp extends App {
 
   // setup for clound env -------------------------------------------------------------
-  val bindAddressConf = ConfigFactory.parseString(
-    s"""
-     akka {
-       remote {
-         artery.canonical.hostname = "${InetAddress.getLocalHost.getHostAddress}"
-       }
-     }
-    """)
-  
-  val rootConfFile = new File("/home/akka/root-application.conf")
-  val rootConf =
-    if (rootConfFile.exists) ConfigFactory.parseFile(rootConfFile)
-    else ConfigFactory.empty("no-root-application-conf-found")
-
-  val conf = bindAddressConf
-    .withFallback(rootConf
-      .withFallback(ConfigFactory.load()))
+  val conf = BenchmarkConfig.load()
   // end of setup for clound env ------------------------------------------------------ 
 
-  val systemName = Try(conf.getString("akka.system-name")).getOrElse("ShardingLatencySystem")
+  val systemName = Try(conf.getString("akka.system-name")).getOrElse("ShardingActorCountScalabilitySystem")
   implicit val system = ActorSystem(systemName, conf)
   
   // management -----------
@@ -57,10 +41,9 @@ object ShardingLatencyApp extends App {
   // end of management ----
   
   
-  if (cluster.selfRoles contains "master") { 
-    system.actorOf(Props[PingLatencyCoordinator], "bench-coordinator")
+  if (InetAddress.getLocalHost.getHostName contains "akka-sharding-001") {
+    system.actorOf(Props[ActorCountingBenchmarkMaster], "bench-coordinator")
   } else {
-    BenchEntity.startRegion(system)
-    system.actorOf(PersistenceHistograms.props(), "persistence-histogram-printer")
+    ActorCountingEntity.startRegion(system)
   }
 }

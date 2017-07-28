@@ -33,5 +33,8 @@ class BenchSettings(system: ActorSystem) extends Extension {
   val NumberOfPings = config.getInt("number-of-pings")
   val PingsPerSecond = config.getInt("pings-per-second")
   val NumberOfShards = config.getInt("number-of-shards")
-  val TotalNodes = config.getInt("total-nodes")
+  val MinimumNodes = config.getInt("minimum-nodes")
+  
+  val AddActorsPerBatch = config.getInt("add-actors-batch")
+  val AddActorsInterval = config.getDuration("add-actors-interval", TimeUnit.SECONDS).seconds
 }
