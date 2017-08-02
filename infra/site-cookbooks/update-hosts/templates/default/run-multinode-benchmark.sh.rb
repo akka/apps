@@ -79,6 +79,7 @@ declare -r COMMON_ARGS="-Dakka.test.LatencySpec.totalMessagesFactor=10 -Dakka.te
 
 #declare -r ARGS="-Dakka.remote.artery.advanced.inbound-lanes=1"
 declare -r ARGS="$1"
+declare -r TEST="$2"
 
 echo "logs in $LOGS_BASE"
 mkdir -p $LOGS1
@@ -102,7 +103,7 @@ sleep 10
 echo "running test: $ARGS, log: $LOGS1/log.txt"
 cd /home/akka/akka
 cp /home/akka/multi-node-test.hosts /home/akka/akka/
-/home/akka/sbt $COMMON_ARGS $MULTI_NODE_ARGS $ARGS -Dsbt.log.noformat=true 'akka-remote-tests/test' > $LOGS1/log.txt
+/home/akka/sbt $COMMON_ARGS $MULTI_NODE_ARGS $ARGS -Dsbt.log.noformat=true "akka-remote-tests/multi-jvm:testOnly $TEST" > $LOGS1/log.txt
 cat $LOGS1/log.txt | grep ===
 cd /home/akka/
 
