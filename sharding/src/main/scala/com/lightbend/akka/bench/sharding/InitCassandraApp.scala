@@ -70,7 +70,8 @@ class AwaitPersistenceInit(
   def persistenceId: String = "persistenceInit"
 
   def receiveRecover: Receive = {
-    case _ =>
+    case it =>
+      println(s"Recover: ${it}")
   }
 
   def receiveCommand: Receive = {

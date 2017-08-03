@@ -19,8 +19,9 @@ package com.lightbend.akka.bench.sharding.latency
 import akka.actor.{ Actor, ActorLogging, CoordinatedShutdown, Props, ReceiveTimeout, Terminated }
 import akka.cluster.ClusterEvent.MemberUp
 import akka.cluster.{ Cluster, ClusterEvent }
+import akka.event.Logging
 import akka.stream.scaladsl.{ Keep, Sink, Source }
-import akka.stream.{ ActorMaterializer, KillSwitches, ThrottleMode }
+import akka.stream.{ ActorMaterializer, Attributes, KillSwitches, ThrottleMode }
 import com.lightbend.akka.bench.sharding.BenchSettings
 import org.HdrHistogram.Histogram
 
@@ -79,22 +80,31 @@ class PingingActor extends Actor with ActorLogging {
 
   implicit val materializer = ActorMaterializer()(context.system)
   
+  val persistMode: Boolean =
+    sys.env.get("MODE").exists(_ == "persist")
+  log.info(Console.RED + s"Using mode: ${persistMode}" + Console.RESET)
+  
   val killSwitch =
-    Source(0L to settings.NumberOfPings)
+    Source(0L to Long.MaxValue)
+      .log("wat").withAttributes(Attributes.logLevels(Logging.WarningLevel, Logging.WarningLevel, Logging.WarningLevel))
       // just chill a bit to give sharding time to start, doesn't really belong here but whatever
-      .initialDelay(2.seconds)
-      .throttle(settings.PingsPerSecond / 20, 50.millis, settings.PingsPerSecond, ThrottleMode.shaping)
-      .viaMat(KillSwitches.single)(Keep.right)
+//      .throttle(settings.PingsPerSecond, 1.second, settings.PingsPerSecond, ThrottleMode.shaping)
+//      .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.foreach { n =>
         val entityId = (n % settings.UniqueEntities).toString
-        val msg = LatencyBenchEntity.PersistAndPing(entityId, System.nanoTime())
+        
+         val msg =  
+         if (persistMode) LatencyBenchEntity.PersistAndPing(entityId, System.nanoTime())
+         else LatencyBenchEntity.Ping(entityId, System.nanoTime())
+
+        log.info(s"proxy.tell($msg, $pongRecipient) = ${proxy.tell(msg, pongRecipient)}")
         proxy.tell(msg, pongRecipient)
       })(Keep.left).run()
 
   def receive = {
 
     case Terminated(_) =>
-      killSwitch.shutdown()
+//      killSwitch.shutdown()
       context.stop(self)
 
   }
@@ -102,20 +112,30 @@ class PingingActor extends Actor with ActorLogging {
 
 }
 
-class PongRecipient extends Actor {
+class PongRecipient extends Actor with ActorLogging {
   case object Tick
+  import context.dispatcher
+  
+  var pongsReceived = 0L
   val maxRecordedTimespan = 30 * 1000
   val pingPersistPongMsHistogram = new Histogram(maxRecordedTimespan, 3)
 
+  context.system.scheduler.schedule(1.second, 1.second, self, Tick)
   context.setReceiveTimeout(20.seconds)
 
   def receive = {
 
     case LatencyBenchEntity.Pong(ping: LatencyBenchEntity.PersistAndPing) =>
-      val msSpan = (System.nanoTime() - ping.sentTimestamp) / 1000000
-      pingPersistPongMsHistogram.recordValue(msSpan)
+      val msSpan = (System.nanoTime() - ping.sentTimestamp).nanos
+      pongsReceived += 1
+      pingPersistPongMsHistogram.recordValue(msSpan.toMicros)
 
+    case Tick =>
+      log.info("Tick, received {} pongs", pongsReceived)
+      printHistograms()
+      
     case ReceiveTimeout =>
+      log.info("Terminating, received {} pongs, and receive timeout triggered ", pongsReceived)
       printHistograms()
       context.stop(self)
 
@@ -125,5 +145,5 @@ class PongRecipient extends Actor {
     println("Histogram of persisted ping-pongs")
     pingPersistPongMsHistogram.outputPercentileDistribution(System.out, 1.0)
   }
-
+  
 }

@@ -1,4 +1,4 @@
-val Akka = "2.5.2"
+val Akka = "2.5.3"
 val AkkaCom = "1.0.3"
 
 lazy val `apps-root` = project

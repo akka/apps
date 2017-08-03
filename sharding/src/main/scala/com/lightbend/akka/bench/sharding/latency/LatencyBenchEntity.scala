@@ -44,7 +44,7 @@ object LatencyBenchEntity {
   }
 
   def extractShardId(numberOfEntities: Int): ShardRegion.ExtractShardId = {
-    case msg: LatencyBenchEntity.EntityCommand => (msg.id.hashCode % numberOfEntities).toString
+    case msg: LatencyBenchEntity.EntityCommand => (Math.abs(msg.id.hashCode) % numberOfEntities).toString
   }
 
   def startRegion(system: ActorSystem) =
@@ -69,23 +69,14 @@ object LatencyBenchEntity {
 class LatencyBenchEntity extends PersistentActor with ActorLogging {
   import LatencyBenchEntity._
 
+  log.info(s"Started ${self.path.name}")
+  
   var persistentPingCounter = 0
-
   override def persistenceId: String = self.path.name
 
   val start = System.nanoTime()
-  override def receiveRecover: Receive = {
-    case _ :PingObserved =>
-      persistentPingCounter += 1
-
-    case _: RecoveryCompleted =>
-      val recoveryMs = (System.nanoTime() - start) / 1000000
-      PersistenceHistograms.recoveryTiming.recordValue(recoveryMs)
-
-  }
 
   override def receiveCommand: Receive = {
-
     case msg: Ping =>
       // simple roundtrip
       log.debug("Got ping from [{}]", sender())
@@ -95,14 +86,24 @@ class LatencyBenchEntity extends PersistentActor with ActorLogging {
       // roundtrip with write
       log.debug("Got persist-ping from [{}]", sender())
       val before = System.nanoTime()
-      persist(PingObserved(msg.sentTimestamp)){ _ =>
+      persist(PingObserved(msg.sentTimestamp)) { _ =>
         val persistMs = (System.nanoTime() - before) / 1000000
         PersistenceHistograms.persistTiming.recordValue(persistMs)
         persistentPingCounter += 1
         sender() ! Pong(msg)
       }
+  }
+  
+  override def receiveRecover: Receive = {
+    case _: PingObserved =>
+      persistentPingCounter += 1
+
+    case _: RecoveryCompleted =>
+      val recoveryMs = (System.nanoTime() - start) / 1000000
+      PersistenceHistograms.recoveryTiming.recordValue(recoveryMs)
 
   }
+  
 
 
 }

@@ -22,7 +22,6 @@ import akka.actor.{ ActorSystem, Props }
 import akka.cluster.Cluster
 import akka.cluster.http.management.ClusterHttpManagement
 import com.lightbend.akka.bench.sharding.BenchmarkConfig
-import com.lightbend.akka.bench.sharding.latency.PingLatencyCoordinator
 
 import scala.util.Try
 

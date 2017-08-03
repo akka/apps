@@ -38,11 +38,14 @@ object ShardingStartLatencyApp extends App {
   val cluster = Cluster(system)
   ClusterHttpManagement(cluster).start()
   // end of management ----
-  
-  if (InetAddress.getLocalHost.getHostName contains "akka-sharding-001") { 
+
+  val selfHostName = InetAddress.getLocalHost.getHostName
+  if (selfHostName contains "akka-sharding-001") { 
     system.actorOf(Props[PingLatencyCoordinator], "bench-coordinator")
+    println(Console.RED + s"Started as PingLatencyCoordinator (${selfHostName})" + Console.RESET)
   } else {
     LatencyBenchEntity.startRegion(system)
     system.actorOf(PersistenceHistograms.props(), "persistence-histogram-printer")
+    println(Console.GREEN + s"Started as LatencyBenchEntity (${selfHostName})" + Console.RESET)
   }
 }
