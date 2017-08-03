@@ -4,27 +4,26 @@ val AkkaCom = "1.0.3"
 lazy val `apps-root` = project
   .in(file("."))
   .aggregate(ddata)
+  .aggregate(pubsub)
   .enablePlugins(ScalafmtPlugin)
 
-lazy val ddata = project
-  .enablePlugins(
-    AutomateHeaderPlugin,
-    ScalafmtPlugin)
+lazy val commonPlugins = List(AutomateHeaderPlugin, ScalafmtPlugin)
+
+lazy val ddata = project.enablePlugins(commonPlugins: _*)
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
-      "com.typesafe.akka"     %% "akka-distributed-data"        % Akka,
-      "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,
-      "com.lightbend.akka"    %% "akka-diagnostics"             % AkkaCom,
-      "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
+      "com.typesafe.akka"     %% "akka-persistence"             % Akka,
       "org.hdrhistogram"       % "HdrHistogram"                 % "2.1.9",
+      "com.typesafe.akka"     %% "akka-persistence-cassandra"   % "0.54",
+      "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
       "com.lightbend.akka"    %% "akka-management-cluster-http" % "0.3",
       "com.typesafe.akka"     %% "akka-http"                    % "10.0.3"
     )
   )
   .enablePlugins(JavaAppPackaging)
 
-lazy val sharding = project.enablePlugins(ddata.plugins)
+lazy val sharding = project.enablePlugins(commonPlugins: _*)
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
@@ -36,6 +35,21 @@ lazy val sharding = project.enablePlugins(ddata.plugins)
       
     )
   )
+
+lazy val pubsub = project
+  .enablePlugins(commonPlugins: _*)
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.typesafe.akka"     %% "akka-cluster-sharding"     % Akka,
+      "com.typesafe.akka"     %% "akka-distributed-data"     % Akka,
+      "com.lightbend.akka"    %% "akka-split-brain-resolver" % AkkaCom,
+      "com.lightbend.akka"    %% "akka-diagnostics"          % AkkaCom,
+      "com.github.romix.akka" %% "akka-kryo-serialization"   % "0.5.1",
+      "org.hdrhistogram"       % "HdrHistogram"              % "2.1.9"
+    )
+  )
+  .enablePlugins(JavaAppPackaging)
+
 
 inThisBuild(Seq(
   scalaVersion := "2.12.2",
