@@ -24,41 +24,38 @@ import akka.cluster.pubsub._
 import scala.concurrent.ExecutionContext
 
 object Publisher {
-  def props(maxTopic: Int, coordinator: ActorRef): Props = Props(new Publisher(maxTopic, coordinator))
+  def props(runId: Int, maxTopic: Int, coordinator: ActorRef): Props = Props(new Publisher(runId, maxTopic, coordinator))
 
-  case class Started(publisher: ActorRef)
-  case class Start(messagesToPublish: Int)
+  case class Started(runId: Int, publisher: ActorRef)
+  case class Start(runId: Int, messagesToPublish: Int)
   case object Tick
 }
-class Publisher(maxTopic: Int, coordinator: ActorRef) extends Actor with ActorLogging {
+class Publisher(runId: Int, maxTopic: Int, coordinator: ActorRef) extends Actor with ActorLogging {
   import Publisher._
   import DistributedPubSubMediator.Publish
 
   implicit val ec: ExecutionContext = context.dispatcher
 
   override def preStart() = {
-//    log.info(s"Started publisher for $topic under $self")
-    coordinator ! Started(self)
+    coordinator ! Started(runId, self)
   }
 
-//  override def postStop() = log.info(s"Publisher stopped")
-
-  // activate the extension
   val mediator = DistributedPubSub(context.system).mediator
   val random = new Random()
 
   override def receive = {
-    case Start(messagesToPublish) =>
-        self ! Tick
-        context.become(ticking(context.system.scheduler.schedule(0.seconds, 10.millis, self, Tick), messagesToPublish))
+    case Start(`runId`, messagesToPublish) =>
+      log.info("publisher starting to publish")
+      context.become(ticking(context.system.scheduler.schedule(0.seconds, 10.millis, self, Tick), messagesToPublish))
   }
 
   def ticking(cancellable: Cancellable, ticksLeft: Int): Receive = {
     case Tick =>
       mediator ! Publish(random.nextInt(maxTopic).toString, Payload(42))
       if (ticksLeft == 1) {
+        log.info("Publisher done, shutting down")
         cancellable.cancel()
-        self ! PoisonPill
+        context.stop(self)
       } else {
         context.become(ticking(cancellable, ticksLeft - 1))
       }

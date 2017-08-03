@@ -17,12 +17,11 @@
 package com.lightbend.akka.bench.pubsub
 
 import scala.util.Try
-
-import akka.actor.{ ActorSystem, PoisonPill, Props }
+import akka.actor.{ActorSystem, PoisonPill, Props}
 import akka.cluster.Cluster
 import java.io.File
 
-import akka.cluster.singleton.{ ClusterSingletonManager, ClusterSingletonManagerSettings }
+import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings, ClusterSingletonProxy, ClusterSingletonProxySettings}
 import com.typesafe.config.ConfigFactory
 
 object PubSubBenchmark extends App {
@@ -38,26 +37,26 @@ object PubSubBenchmark extends App {
   // end of setup for clound env ------------------------------------------------------
 
   val systemName = Try(conf.getString("akka.system-name")).getOrElse("Benchmark")
-  val system = ActorSystem(systemName, conf)
+  implicit val system = ActorSystem(systemName, conf)
 
-  Cluster(system).registerOnMemberUp {
-    val numberOfPublishers = 50
-    val numberOfSubscribers = 50
-    val messagesPerPublisher = 1000
+  system.actorOf(PubSubHost.props(), PubSubHost.Name)
 
-    val numberOfTopics = 50000
-    require(numberOfSubscribers <= numberOfPublishers || numberOfSubscribers <= numberOfTopics)
-
+  if (Cluster(system).selfRoles("master")) {
     system.actorOf(
       ClusterSingletonManager.props(
-        singletonProps = PubSubCoordinator.props(messagesPerPublisher = messagesPerPublisher, numberOfTopics = numberOfTopics, numberOfPublishers = numberOfPublishers, numberOfSubscribers = numberOfSubscribers),
+        singletonProps = BenchmarkCoordinator.props(),
         terminationMessage = PoisonPill,
-        settings = ClusterSingletonManagerSettings(system)),
+        settings = ClusterSingletonManagerSettings(system).withRole("master")),
       name = CoordinatorManager)
 
-    system.actorOf(PubSubHost.props(numberOfTopics = numberOfTopics, numberOfPublishers = numberOfPublishers, numberOfSubscribers = numberOfSubscribers), PubSubHost.name)
-  }
+    val proxy = system.actorOf(ClusterSingletonProxy.props(
+      singletonManagerPath = "/user/" + PubSubBenchmark.CoordinatorManager,
+      settings = ClusterSingletonProxySettings(system).withRole("master")),
+      name = "coordinatorProxy")
 
-  scala.io.StdIn.readLine() // TODO not sure if readline will work well with starting it via scripts...
-  system.terminate()
+    HttpApi.startServer("localhost", 8080, proxy)
+
+    scala.io.StdIn.readLine()
+    system.terminate()
+  }
 }

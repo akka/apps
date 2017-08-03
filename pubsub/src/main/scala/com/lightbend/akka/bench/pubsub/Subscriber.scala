@@ -26,12 +26,13 @@ import akka.util.Timeout
 import DistributedPubSubMediator.{Subscribe, SubscribeAck}
 
 object Subscriber {
-  def props(topic: Int, topicUntil: Int, mediator: ActorRef, coordinator: ActorRef): Props = Props(new Subscriber(topic, topicUntil, mediator, coordinator))
+  def props(runId: Int, topic: Int, topicUntil: Int, mediator: ActorRef, coordinator: ActorRef): Props =
+    Props(new Subscriber(runId, topic, topicUntil, mediator, coordinator))
 
-  case object Subscribed
+  case class Subscribed(runId: Int)
   case object CollectStats
 }
-class Subscriber(topic: Int, topicUntil: Int, mediator: ActorRef, coordinator: ActorRef) extends Actor with ActorLogging {
+class Subscriber(runId: Int, topic: Int, topicUntil: Int, mediator: ActorRef, coordinator: ActorRef) extends Actor with ActorLogging {
   import Subscriber._
 
   var messagesReceived = 0
@@ -46,8 +47,8 @@ class Subscriber(topic: Int, topicUntil: Int, mediator: ActorRef, coordinator: A
 
   override def receive = {
     case _: Seq[_] ⇒
-      log.info(s"Subscribed to $topic-$topicUntil")
-      coordinator ! Subscribed
+      log.info(s"Subscribed to topics $topic-$topicUntil")
+      coordinator ! Subscribed(runId)
     case Payload(n) =>
       messagesReceived += 1
     case CollectStats =>

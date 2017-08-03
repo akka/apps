@@ -16,44 +16,53 @@
 
 package com.lightbend.akka.bench.pubsub
 
-import scala.concurrent.duration._
-import scala.concurrent._
-
 import akka.actor._
-import akka.pattern.{ ask, pipe }
 import akka.cluster.singleton._
-import akka.util.Timeout
-import akka.cluster.pubsub._
+import com.lightbend.akka.bench.pubsub.PubSubHost.StartSession
 
 object PubSubHost {
-  def props(numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribers: Int): Props =
-    Props(new PubSubHost(numberOfTopics, numberOfPublishers, numberOfSubscribers))
-  def name = "pub-sub-host"
-}
-class PubSubHost(numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribers: Int) extends Actor {
-  val NumNodes = context.system.settings.config.getInt("akka.cluster.min-nr-of-members")
 
-  val mediator = DistributedPubSub(context.system).mediator
+  case class StartSession(sessionId: Int, numberOfHosts: Int, numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribers: Int)
+  case class StopRun(runId: Int)
+
+  def props(): Props = Props(new PubSubHost())
+  val Name = "pub-sub-host"
+
+}
+
+/**
+ * One of these runs on each node in the cluster
+ */
+class PubSubHost() extends Actor with ActorLogging {
+
+  import PubSubHost._
+
+  log.info("PubSubHost started")
 
   val coordinator = context.actorOf(
     ClusterSingletonProxy.props(
       singletonManagerPath = "/user/" + PubSubBenchmark.CoordinatorManager,
-      settings = ClusterSingletonProxySettings(context.system)),
+      settings = ClusterSingletonProxySettings(context.system).withRole("master")),
     name = "coordinatorProxy")
 
-  val subscribersOnThisNode = numberOfSubscribers / NumNodes
-  val publishersOnThisNode = numberOfPublishers / NumNodes
+  def receive = idle
 
-  val topicsPerSubscriber = numberOfTopics / subscribersOnThisNode
+  def idle: Receive = {
+    case StartSession(id, numberOfHosts, numberOfTopics, numberOfPublishers, numberOfSubscribers) =>
+      val runner = context.watch(context.actorOf(PubSubHostSession.props(id, sender(), numberOfHosts, numberOfTopics, numberOfPublishers, numberOfSubscribers), s"session-$id"))
+      context.become(running(runner, id))
 
-  (0 until numberOfTopics by topicsPerSubscriber).foreach(n =>
-    context.actorOf(Subscriber.props(n, Math.min(n + topicsPerSubscriber, numberOfTopics), mediator, coordinator), s"subscriber-$n")
-  )
+  }
 
-  (0 until publishersOnThisNode).foreach(n =>
-    context.actorOf(Publisher.props(numberOfTopics, coordinator), s"publisher-$n"))
+  def running(runner: ActorRef, sessionId: Int): Receive = {
+    case Terminated(_) =>
+      log.info("Host run {} stopped itself", sessionId)
+      context.become(idle)
 
-  def receive = {
-    case _ => ???
+    case StopRun(`sessionId`) =>
+      context.unwatch(runner)
+      runner ! PubSubHostSession.Stop(sessionId)
+      log.info("Host run {} completed from coordinator", sessionId)
+      context.become(idle)
   }
 }
