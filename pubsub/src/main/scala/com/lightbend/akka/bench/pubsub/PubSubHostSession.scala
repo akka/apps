@@ -41,14 +41,15 @@ class PubSubHostSession(sessionId: Int, coordinator: ActorRef, numberOfNodes: In
   (0 until numberOfTopics by topicsPerSubscriber).foreach(n =>
     context.watch(context.actorOf(Subscriber.props(sessionId, n, Math.min(n + topicsPerSubscriber, numberOfTopics), mediator, coordinator), s"subscriber-$n"))
   )
+  log.info("Started {} subscribers, each subscribing to {} topics", subscribersOnThisNode, topicsPerSubscriber)
 
-  val publishers = (0 until publishersOnThisNode).foreach(n =>
+  (0 until publishersOnThisNode).foreach(n =>
     context.watch(context.actorOf(Publisher.props(sessionId, numberOfTopics, coordinator), s"publisher-$n")))
-
+  log.info("Started {} publishers", publishersOnThisNode)
 
   def receive = {
     case Stop(`sessionId`) =>
-      log.info("Shutting down session {}", sessionId)
+      log.debug("Shutting down session {}", sessionId)
       context.stop(self)
 
     case Terminated(ref) =>

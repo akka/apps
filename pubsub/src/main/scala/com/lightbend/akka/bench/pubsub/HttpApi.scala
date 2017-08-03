@@ -17,15 +17,16 @@
 package com.lightbend.akka.bench.pubsub
 
 import akka.actor.{ActorRef, ActorSystem}
-import akka.cluster.Cluster
+import akka.cluster.{Cluster, MemberStatus}
 import akka.cluster.http.management.ClusterHttpManagementRoutes
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import akka.pattern.ask
 import akka.util.Timeout
-import scala.concurrent.duration._
 
+import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 object HttpApi {
 
@@ -37,23 +38,22 @@ object HttpApi {
     import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
     import spray.json._
     import DefaultJsonProtocol._
-    implicit object FiniteDurationFormat extends JsonFormat[FiniteDuration] {
-      def write(x: FiniteDuration) = JsString(x.toString())
-      def read(value: JsValue) = value match {
-        case x => deserializationError("I know nothing about reading" + x)
-      }
-    }
     implicit val benchResultFormat = jsonFormat9(BenchmarkCoordinator.BenchResult)
     implicit val resultFormat = jsonFormat1(BenchmarkCoordinator.AllResults)
 
     val routes = concat(
       path("bench") {
         post {
-          parameters('numberOfNodes.as[Int], 'messagesPerPublisher.as[Int], 'numberOfTopics.as[Int], 'numberOfPublishers.as[Int], 'numberOfSubscribers.as[Int]) {
-            (numberOfNodes, messagesPerPublisher, numberOfTopics, numberOfPublishers, numberOfSubscribers) =>
-              implicit val timeout: Timeout = 5.seconds
-              onSuccess(coordinator ? BenchmarkCoordinator.StartRun(numberOfNodes, messagesPerPublisher, numberOfTopics, numberOfPublishers, numberOfSubscribers)) {
-                case BenchmarkCoordinator.RunInitialized(id) => complete(s"run $id started")
+          parameters('numberOfNodes.as[Int], 'messagesPerPublisher.as[Int], 'numberOfTopics.as[Int], 'numberOfPublishers.as[Int], 'numberOfSubscribers.as[Int]).as(BenchmarkCoordinator.StartRun) { startRun =>
+              val upNodes = Cluster(system).state.members.count(_.status == MemberStatus.Up)
+
+              if (startRun.numberOfNodes > upNodes) {
+                complete(StatusCodes.BadRequest, s"Wanted ${startRun.numberOfNodes} but cluster only contains $upNodes nodes that are UP")
+              } else {
+                implicit val timeout: Timeout = 5.seconds
+                onSuccess(coordinator ? startRun) {
+                  case BenchmarkCoordinator.RunInitialized(id) => complete(StatusCodes.Accepted, s"run $id started")
+                }
               }
           }
         } ~

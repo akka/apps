@@ -18,13 +18,25 @@ package com.lightbend.akka.bench.pubsub
 
 import akka.actor.{Actor, ActorLogging, Props, Terminated}
 
-import scala.concurrent.duration.FiniteDuration
-
 object BenchmarkCoordinator {
-  case class StartRun(numberOfNodes: Int, messagesPerPublisher: Int, numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribers: Int)
+  case class StartRun(numberOfNodes: Int, messagesPerPublisher: Int, numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribers: Int) {
+    require(numberOfPublishers % numberOfNodes == 0, "Number of publishers must be evenly divisible over the number of nodes")
+    require(numberOfSubscribers % numberOfNodes == 0, "Number of subscribers must be evenly divisible over the number of nodes")
+    require(numberOfSubscribers <= numberOfTopics, "Number of subscribers cannot be more than the number of topics")
+    require(numberOfTopics % numberOfSubscribers == 0, "Number of topics must be evenly divisible over the number of subscribers")
+  }
   case class RunInitialized(id: Int)
 
-  case class BenchResult(id: Int, numberOfNodes: Int, messagesPerPublisher: Int, numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribers: Int, time: FiniteDuration, messagesArrived: Int, totalNumberOfMessages: Int)
+  case class BenchResult(
+    id: Int,
+    numberOfNodes: Int,
+    messagesPerPublisher: Int,
+    numberOfTopics: Int,
+    numberOfPublishers: Int,
+    numberOfSubscribers: Int,
+    messagesArrived: Int,
+    totalNumberOfMessages: Int,
+    failed: Int)
 
   case object GetResults
   case class AllResults(results: List[BenchResult])

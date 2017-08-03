@@ -45,7 +45,7 @@ class Publisher(runId: Int, maxTopic: Int, coordinator: ActorRef) extends Actor 
 
   override def receive = {
     case Start(`runId`, messagesToPublish) =>
-      log.info("publisher starting to publish")
+      log.debug("publisher starting to publish")
       context.become(ticking(context.system.scheduler.schedule(0.seconds, 10.millis, self, Tick), messagesToPublish))
   }
 
@@ -53,7 +53,7 @@ class Publisher(runId: Int, maxTopic: Int, coordinator: ActorRef) extends Actor 
     case Tick =>
       mediator ! Publish(random.nextInt(maxTopic).toString, Payload(42))
       if (ticksLeft == 1) {
-        log.info("Publisher done, shutting down")
+        log.debug("Publisher done, shutting down")
         cancellable.cancel()
         context.stop(self)
       } else {

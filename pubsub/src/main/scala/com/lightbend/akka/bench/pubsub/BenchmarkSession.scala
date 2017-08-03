@@ -28,6 +28,8 @@ object BenchmarkSession {
   case object StartPublishing
   case object CollectResults
 
+  case object SessionTimeout
+
   def props(runId: Int, numberOfNodes: Int, messagesPerPublisher: Int, numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribers: Int): Props =
     Props(new BenchmarkSession(runId: Int, numberOfNodes: Int, messagesPerPublisher, numberOfTopics, numberOfPublishers, numberOfSubscribers))
   val Name = "pub-sub-coordinator"
@@ -37,14 +39,17 @@ object BenchmarkSession {
  * Abstracts coordination running one benchmark on the master node, stops itself when done
  */
 class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher: Int, numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribers: Int) extends Actor with ActorLogging {
+
   import BenchmarkSession._
+
   require(numberOfSubscribers <= numberOfPublishers || numberOfSubscribers <= numberOfTopics)
 
-  log.info("Starting bench run id {}", sessionId)
+  log.info("Starting bench session id {}", sessionId)
 
   implicit val ec: ExecutionContext = context.dispatcher
 
-  val started = System.nanoTime()
+  context.system.scheduler.scheduleOnce(120.seconds, self, SessionTimeout)
+
   val numberOfMessages = messagesPerPublisher * numberOfPublishers
 
   val participantHosts = Cluster(context.system).state.members.collect {
@@ -66,16 +71,23 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
   def subscribing(subscribers: Set[ActorRef], publishers: Set[ActorRef], waitingForSubscribers: Int, waitingForPublishers: Int): Receive =
     if (waitingForSubscribers == 0 && waitingForPublishers == 0) {
       val backoff = 10.seconds
-      log.info(s"${subscribers.size} subscribers and ${publishers.size} publishers initialized, allowing for subscriber information to propagate for $backoff")
-      context.system.scheduler.scheduleOnce(10.seconds, self, StartPublishing)
+      log.info(s"${subscribers.size} subscribers and ${publishers.size} publishers initialized, allowing for subscriber dissemination for $backoff")
+      context.system.scheduler.scheduleOnce(backoff, self, StartPublishing)
       pausing(publishers, subscribers)
     } else {
       case Publisher.Started(`sessionId`, publisher) =>
-        log.info("Got publisher: " + publisher)
+        log.debug("Got publisher: {}", publisher)
         context.become(subscribing(subscribers, publishers + publisher, waitingForSubscribers, waitingForPublishers - 1))
       case Subscriber.Subscribed(`sessionId`) =>
-        log.info("Got subscriber: " + sender())
+        log.debug("Got subscriber: {}", sender())
         context.become(subscribing(subscribers + sender(), publishers, waitingForSubscribers - 1, waitingForPublishers))
+
+      case SessionTimeout =>
+        log.error("Session timed out while waiting for subscribers and publishers, aborting. Waiting for {} subscribers and {} publishers",
+          waitingForSubscribers,
+          waitingForPublishers
+        )
+        context.stop(self)
     }
 
   def pausing(publishers: Set[ActorRef], subscribers: Set[ActorRef]): Receive = {
@@ -84,6 +96,10 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
       publishers.foreach(_ ! Publisher.Start(sessionId, messagesPerPublisher))
       context.system.scheduler.scheduleOnce(20.seconds, self, CollectResults)
       context.become(waiting(subscribers))
+
+    case SessionTimeout =>
+      log.error("Session timed out while waiting for dissemination, aborting")
+      context.stop(self)
   }
 
   def waiting(subscribers: Set[ActorRef]): Receive = {
@@ -94,14 +110,17 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
         .map(_ ? Subscriber.CollectStats)
         .map(_.pipeTo(self))
       context.become(waitingFor(subscribers.size))
+
+    case SessionTimeout =>
+      log.error("Session timed out while backing off for messages to be published, aborting")
+      context.stop(self)
   }
 
-  def waitingFor(subscribers: Int, resultSoFar: Int = 0): Receive = {
+  def waitingFor(subscribers: Int, resultSoFar: Int = 0, failed: Int = 0): Receive = {
     case i: Int =>
-      if (subscribers > 1) context.become(waitingFor(subscribers - 1, resultSoFar + i))
+      if (subscribers > 1) context.become(waitingFor(subscribers - 1, resultSoFar + i, failed))
       else {
         log.info(s"Published $numberOfMessages messages, ${resultSoFar+i} arrived")
-        val timing = (System.nanoTime() - started) / 1000000
         val result = BenchmarkCoordinator.BenchResult(
           sessionId,
           numberOfNodes,
@@ -109,12 +128,24 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
           numberOfTopics,
           numberOfPublishers,
           numberOfSubscribers,
-          timing.millis,
-          resultSoFar,
-          numberOfMessages)
+          resultSoFar + i,
+          numberOfMessages,
+          failed)
         context.parent ! result
         participantHosts.foreach(_ ! PubSubHost.StopRun(sessionId))
         context.stop(self)
       }
+
+    case akka.actor.Status.Failure(ex) =>
+      log.error(ex, "Got failure while waiting for results")
+      context.become(waitingFor(subscribers - 1, resultSoFar, failed + 1))
+
+    case SessionTimeout =>
+      log.error("Session timed out while gathering stats from all subscribers (subscribers left {}, aborting", subscribers)
+      context.stop(self)
+  }
+
+  override def unhandled(message: Any): Unit = {
+    log.info("Unhandled message {}", message)
   }
 }
