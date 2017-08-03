@@ -14,6 +14,8 @@ lazy val ddata = project.enablePlugins(commonPlugins: _*)
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
       "com.typesafe.akka"     %% "akka-persistence"             % Akka,
+      "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,
+      "com.lightbend.akka"    %% "akka-diagnostics"             % AkkaCom,
       "org.hdrhistogram"       % "HdrHistogram"                 % "2.1.9",
       "com.typesafe.akka"     %% "akka-persistence-cassandra"   % "0.54",
       "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
@@ -21,7 +23,6 @@ lazy val ddata = project.enablePlugins(commonPlugins: _*)
       "com.typesafe.akka"     %% "akka-http"                    % "10.0.3"
     )
   )
-  .enablePlugins(JavaAppPackaging)
 
 lazy val sharding = project.enablePlugins(commonPlugins: _*)
   .settings(
@@ -40,15 +41,16 @@ lazy val pubsub = project
   .enablePlugins(commonPlugins: _*)
   .settings(
     libraryDependencies ++= Seq(
-      "com.typesafe.akka"     %% "akka-cluster-sharding"     % Akka,
-      "com.typesafe.akka"     %% "akka-distributed-data"     % Akka,
-      "com.lightbend.akka"    %% "akka-split-brain-resolver" % AkkaCom,
-      "com.lightbend.akka"    %% "akka-diagnostics"          % AkkaCom,
-      "com.github.romix.akka" %% "akka-kryo-serialization"   % "0.5.1",
-      "org.hdrhistogram"       % "HdrHistogram"              % "2.1.9"
+      "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
+      "com.typesafe.akka"     %% "akka-distributed-data"        % Akka,
+      "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,
+      "com.lightbend.akka"    %% "akka-diagnostics"             % AkkaCom,
+      "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
+      "org.hdrhistogram"       % "HdrHistogram"                 % "2.1.9",
+      "com.lightbend.akka"    %% "akka-management-cluster-http" % "0.3",
+      "com.typesafe.akka"     %% "akka-http"                    % "10.0.3"
     )
   )
-  .enablePlugins(JavaAppPackaging)
 
 
 inThisBuild(Seq(
