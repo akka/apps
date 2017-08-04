@@ -54,7 +54,11 @@ object PubSubBenchmark extends App {
       settings = ClusterSingletonProxySettings(system).withRole("master")),
       name = "coordinatorProxy")
 
-    HttpApi.startServer("localhost", 8080, proxy)
+
+    val httpHost = conf.getString("bench.pubsub.http-api.host")
+    val httpPort = conf.getInt("bench.pubsub.http-api.port")
+
+    HttpApi.startServer(httpHost, httpPort, proxy)
 
     scala.io.StdIn.readLine()
     system.terminate()
