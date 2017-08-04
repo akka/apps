@@ -21,8 +21,6 @@ import akka.cluster.pubsub.DistributedPubSub
 
 object PubSubHostSession {
 
-  case class Stop(runId: Int)
-
   def props(runId: Int, coordinator: ActorRef, numberOfNodes: Int, numberOfTopics: Int, numberOfPublishers: Int, numberOfSubscribers: Int): Props =
     Props(new PubSubHostSession(runId, coordinator, numberOfNodes, numberOfTopics, numberOfPublishers, numberOfSubscribers))
 }
@@ -48,9 +46,6 @@ class PubSubHostSession(sessionId: Int, coordinator: ActorRef, numberOfNodes: In
   log.info("Started {} publishers", publishersOnThisNode)
 
   def receive = {
-    case Stop(`sessionId`) =>
-      log.debug("Shutting down session {}", sessionId)
-      context.stop(self)
 
     case Terminated(ref) =>
       if (context.children.isEmpty) {

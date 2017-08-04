@@ -61,7 +61,7 @@ class PubSubHost() extends Actor with ActorLogging {
 
     case StopRun(`sessionId`) =>
       context.unwatch(runner)
-      runner ! PubSubHostSession.Stop(sessionId)
+      context.stop(runner)
       log.info("Host run {} completed from coordinator", sessionId)
       context.become(idle)
   }

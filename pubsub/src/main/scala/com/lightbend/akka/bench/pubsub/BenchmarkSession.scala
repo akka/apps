@@ -87,6 +87,7 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
           waitingForSubscribers,
           waitingForPublishers
         )
+        stopSession()
         context.stop(self)
     }
 
@@ -99,6 +100,7 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
 
     case SessionTimeout =>
       log.error("Session timed out while waiting for dissemination, aborting")
+      stopSession()
       context.stop(self)
   }
 
@@ -113,6 +115,7 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
 
     case SessionTimeout =>
       log.error("Session timed out while backing off for messages to be published, aborting")
+      stopSession()
       context.stop(self)
   }
 
@@ -132,7 +135,7 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
           numberOfMessages,
           failed)
         context.parent ! result
-        participantHosts.foreach(_ ! PubSubHost.StopRun(sessionId))
+        stopSession()
         context.stop(self)
       }
 
@@ -142,7 +145,12 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
 
     case SessionTimeout =>
       log.error("Session timed out while gathering stats from all subscribers (subscribers left {}, aborting", subscribers)
+      stopSession()
       context.stop(self)
+  }
+
+  def stopSession(): Unit = {
+    participantHosts.foreach(_ ! PubSubHost.StopRun(sessionId))
   }
 
   override def unhandled(message: Any): Unit = {
