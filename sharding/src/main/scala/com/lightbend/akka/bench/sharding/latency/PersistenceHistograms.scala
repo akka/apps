@@ -16,9 +16,7 @@
 
 package com.lightbend.akka.bench.sharding.latency
 
-import akka.actor.{ Actor, Props }
-import akka.cluster.Cluster
-import akka.cluster.ClusterEvent.MemberLeft
+import akka.actor.{ Actor, ActorLogging, Props }
 import org.HdrHistogram.Histogram
 
 /**
@@ -35,22 +33,19 @@ object PersistenceHistograms {
   def props() = Props[PersistenceHistograms]
 }
 
-class PersistenceHistograms extends Actor {
+class PersistenceHistograms extends Actor with ActorLogging {
+  import scala.concurrent.duration._
+  import context.dispatcher
 
-  Cluster(context.system).subscribe(self, classOf[MemberLeft])
-
+  context.system.scheduler.schedule(3.seconds, 3.seconds, self, "ping")
+  
   override def receive: Receive = {
-    case _: MemberLeft =>
-      // as soon as members start leaving we can shutdown as well
-
-      // not really useful yet
-      // println("Histogram of persisted entity recoveries")
-      // PersistenceHistograms.recoveryTiming.outputPercentileDistribution(System.out, 1.0)
-
-      println("Histogram of persists")
-      PersistenceHistograms.persistTiming.outputPercentileDistribution(System.out, 1.0)
-
-      context.system.terminate()
+    case _ =>
+      println("========= Histogram of sharded actor wakeup times ======== ")
+      PersistenceHistograms.recoveryTiming.outputPercentileDistribution(System.out, 1.0)
+      
+//      println("========= Histogram of persist times ======== ")
+//      PersistenceHistograms.persistTiming.outputPercentileDistribution(System.out, 1.0)
 
   }
 }

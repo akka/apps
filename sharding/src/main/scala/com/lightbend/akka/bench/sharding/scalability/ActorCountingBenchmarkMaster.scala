@@ -20,6 +20,9 @@ import java.util
 
 import akka.actor.{ Actor, ActorLogging, ActorRef }
 import akka.cluster.Cluster
+import akka.event.Logging
+import akka.stream.Attributes
+import akka.stream.scaladsl.{ Flow, Source }
 import com.lightbend.akka.bench.sharding.BenchSettings
 
 import scala.concurrent.duration._
