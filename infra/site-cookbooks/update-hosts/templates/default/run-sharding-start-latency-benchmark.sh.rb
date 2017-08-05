@@ -61,7 +61,7 @@ finish() {
     pkill -u akka java
     sleep 5
     pkill -9 -u akka java
-  "
+  " & 
   
   # avoid copy own files
   if [ ! -d "$LOGS_BASE/$IP2" ]; then

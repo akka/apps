@@ -83,3 +83,31 @@ done
 #fix nodes_with_role:cassandra
 #
 #echo "------------------- DONE -------------------"
+
+
+
+for n in 09 10 11 12 13 14 15 16 17 18 19 20; do
+gcloud compute --project "akka-gcp" disks create "akka-cassandra-$n" --size "20" --zone "us-central1-a" --source-snapshot "cassandra-base" --type "pd-ssd"
+
+gcloud compute --project "akka-gcp" instances create "akka-cassandra-$n" --zone "us-central1-a" --machine-type "n1-standard-16" --subnet "default" --no-address --metadata "startup-script=ip a | grep 10.128 | awk \"{print $4}\" > /home/ktoso/ip\u000asudo sed -i \"s/rpc_address: 10.128.0.4/rpc_address: $(cat /home/ktoso/ip)/g\" /etc/cassandra/cassandra.yaml\u000asudo sed -i \"s/listen_address: 10.128.0.4/listen_address: $(cat /homne/ktoso/ip)/g\" /etc/cassandra/cassandra.yaml" --maintenance-policy "MIGRATE" --service-account "7250250762-compute@developer.gserviceaccount.com" --scopes "https://www.googleapis.com/auth/cloud-platform" --tags "cassandra","akka" --disk "name=akka-cassandra-$n,device-name=akka-cassandra-$n,mode=rw,boot=yes,auto-delete=yes"
+
+done
+
+
+for IP2 in 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20; do
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no akka-cassandra-$IP2 "
+  # sudo rm -rf /var/lib/cassandra/*
+  # ip a | grep 10.128 | awk '{print \$4}' > ip
+  # sudo sed -i \"s/rpc_address: 10.128.0.4/rpc_address: "$(cat /home/ktoso/ip)"/g\" /etc/cassandra/cassandra.yaml
+  # sudo sed -i \"s/listen_address: 10.128.0.4/listen_address: "$(cat /home/ktoso/ip)"/g\" /etc/cassandra/cassandra.yaml
+  sudo service cassandra start
+"
+done
+
+
+sudo service cassandra stop
+sudo rm -rf /var/lib/cassandra/*
+ip a | grep 10.128 | awk '{print $4}' > ip
+sudo sed -i "s/rpc_address: 10.128.0.4/rpc_address: "$(cat /home/ktoso/ip)"/g" /etc/cassandra/cassandra.yaml
+sudo sed -i "s/listen_address: 10.128.0.4/listen_address: "$(cat /home/ktoso/ip)"/g" /etc/cassandra/cassandra.yaml
+sudo service cassandra start

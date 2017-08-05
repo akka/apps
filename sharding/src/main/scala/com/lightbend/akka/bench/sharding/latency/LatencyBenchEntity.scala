@@ -16,20 +16,25 @@
 
 package com.lightbend.akka.bench.sharding.latency
 
-import akka.actor.{ ActorLogging, ActorSystem, Props }
+import akka.actor.{ Actor, ActorLogging, ActorSystem, Props }
 import akka.cluster.sharding.{ ClusterSharding, ClusterShardingSettings, ShardRegion }
 import akka.persistence.{ PersistentActor, RecoveryCompleted }
 import com.lightbend.akka.bench.sharding.BenchSettings
+import scala.concurrent.duration._
 
 object LatencyBenchEntity {
 
   // commands
   sealed trait EntityCommand { def id: String }
-  sealed trait PingLike { def sentTimestamp: Long }
-  final case class Ping(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
-  final case class PersistAndPing(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
-  final case class Pong(original: PingLike)
+  sealed trait PingLike { def id: String; def sentTimestamp: Long }
+  final case class PingFirst(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
+  final case class PongFirst(original: PingLike, wakeupTimeMs: Long)
+  
+  final case class PingSecond(id: String, sentTimestamp: Long) extends PingLike
+  final case class PongSecond(original: PingLike)
 
+  final case class PersistAndPing(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
+  
   // events
   case class PingObserved(sentTimestamp: Long)
 
@@ -66,41 +71,48 @@ object LatencyBenchEntity {
       )
 }
 
-class LatencyBenchEntity extends PersistentActor with ActorLogging {
+class LatencyBenchEntity extends Actor with ActorLogging { // FIXME: FIX CASSANDRA AND DO PERSISTENCE BENCH
   import LatencyBenchEntity._
 
   log.info(s"Started ${self.path.name}")
   
   var persistentPingCounter = 0
-  override def persistenceId: String = self.path.name
+//  override def persistenceId: String = self.path.name
 
-  val start = System.nanoTime()
+  val started = System.currentTimeMillis()
 
-  override def receiveCommand: Receive = {
-    case msg: Ping =>
+  override def receive = {// Command: Receive = {
+    case msg: PingFirst =>
       // simple roundtrip
-      log.debug("Got ping from [{}]", sender())
-      sender() ! Pong(msg)
+      sender() ! PongFirst(msg, started)
+    
+    case msg: PingSecond =>
+      // simple roundtrip
+      sender() ! PongSecond(msg)
 
-    case msg: PersistAndPing =>
-      // roundtrip with write
-      log.debug("Got persist-ping from [{}]", sender())
-      val before = System.nanoTime()
-      persist(PingObserved(msg.sentTimestamp)) { _ =>
-        val persistMs = (System.nanoTime() - before) / 1000000
-        PersistenceHistograms.persistTiming.recordValue(persistMs)
-        persistentPingCounter += 1
-        sender() ! Pong(msg)
-      }
+//    case msg: PersistAndPing =>
+//      // roundtrip with write
+//      log.debug("Got persist-ping from [{}]", sender())
+//      val before = System.nanoTime()
+//      persist(PingObserved(msg.sentTimestamp)) { _ =>
+//        val persistMs = (System.nanoTime() - before).nanos.toMillis
+//        PersistenceHistograms.persistTiming.recordValue(persistMs)
+//        persistentPingCounter += 1
+//        sender() ! Pong(msg)
+//      }
+      
+    case other =>
+      log.info("received something else: " + other)
+      throw new Exception("What is: " + other.getClass)
   }
   
-  override def receiveRecover: Receive = {
+  def receiveRecover: Receive = {
     case _: PingObserved =>
       persistentPingCounter += 1
 
     case _: RecoveryCompleted =>
-      val recoveryMs = (System.nanoTime() - start) / 1000000
-      PersistenceHistograms.recoveryTiming.recordValue(recoveryMs)
+      val recoveryMs = (System.nanoTime() - started).nanos
+      PersistenceHistograms.recoveryTiming.recordValue(recoveryMs.toMillis)
 
   }
   
