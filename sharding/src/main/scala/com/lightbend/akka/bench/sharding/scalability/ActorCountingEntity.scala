@@ -46,7 +46,7 @@ object ActorCountingEntity {
     ClusterSharding(system).start(
       typeName,
       ActorCountingEntity.props(),
-      ClusterShardingSettings(system).withRole("shard"),
+      ClusterShardingSettings(system),
       extractEntityId,
       extractShardId(BenchSettings(system).NumberOfShards)
     )
@@ -55,7 +55,7 @@ object ActorCountingEntity {
     ClusterSharding(system)
       .startProxy(
         typeName,
-        Some("shard"),
+        None, // don't require the shard region; Some("shard"),
         extractEntityId,
         extractShardId(BenchSettings(system).NumberOfShards)
       )

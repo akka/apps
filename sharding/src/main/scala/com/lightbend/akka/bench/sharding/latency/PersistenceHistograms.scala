@@ -19,14 +19,23 @@ package com.lightbend.akka.bench.sharding.latency
 import akka.actor.{ Actor, ActorLogging, Props }
 import org.HdrHistogram.Histogram
 
+import scala.concurrent.duration.Duration
+
 /**
  * Thread safe histograms updated from the persistent entity, an actor (should be a single one per actor system)
  * periodically printing the histograms to stdout
  */
 object PersistenceHistograms {
 
-  val persistTiming = new Histogram(20 * 1000, 3)
-  val recoveryTiming = new Histogram(60 * 1000, 3)
+  private val singlePersistTiming = new Histogram(20 * 1000 * 1000, 3)
+  def recordSinglePersistTiming(t: Duration): Unit = synchronized { 
+    singlePersistTiming.recordValue(t.toMicros)
+  }
+  
+  private val recoveryTiming = new Histogram(60 * 1000 * 1000, 3)
+  def recordRecoveryPersistTiming(t: Duration): Unit = synchronized { 
+    recoveryTiming.recordValue(t.toMicros)
+  }
 
   object PrintHistograms
 
@@ -44,8 +53,7 @@ class PersistenceHistograms extends Actor with ActorLogging {
       println("========= Histogram of sharded actor wakeup times ======== ")
       PersistenceHistograms.recoveryTiming.outputPercentileDistribution(System.out, 1.0)
       
-//      println("========= Histogram of persist times ======== ")
-//      PersistenceHistograms.persistTiming.outputPercentileDistribution(System.out, 1.0)
-
+      println("========= Histogram of persist times ======== ")
+      PersistenceHistograms.singlePersistTiming.outputPercentileDistribution(System.out, 1.0)
   }
 }
