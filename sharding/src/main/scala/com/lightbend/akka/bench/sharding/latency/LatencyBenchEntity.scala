@@ -18,22 +18,25 @@ package com.lightbend.akka.bench.sharding.latency
 
 import akka.actor.{ Actor, ActorLogging, ActorSystem, Props }
 import akka.cluster.sharding.{ ClusterSharding, ClusterShardingSettings, ShardRegion }
-import akka.persistence.{ PersistentActor, RecoveryCompleted }
+import akka.persistence.{ DeleteMessagesFailure, DeleteMessagesSuccess, PersistentActor, RecoveryCompleted }
 import com.lightbend.akka.bench.sharding.BenchSettings
+
 import scala.concurrent.duration._
 
 object LatencyBenchEntity {
 
   // commands
   sealed trait EntityCommand { def id: String }
-  sealed trait PingLike { def id: String; def sentTimestamp: Long }
-  final case class PingFirst(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
-  final case class PongFirst(original: PingLike, wakeupTimeMs: Long)
+  sealed trait PingLike { def id: String; def pingCreatedNanoTime: Long }
+  final case class PingFirst(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
+  final case class PongFirst(original: PingLike, wakeupTimeMicros: Long)
   
-  final case class PingSecond(id: String, sentTimestamp: Long) extends PingLike
+  final case class PingSecond(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
   final case class PongSecond(original: PingLike)
 
-  final case class PersistAndPing(id: String, sentTimestamp: Long) extends EntityCommand with PingLike
+  final case class PersistAndPing(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
+  final case class PersistPingSecond(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
+  final case class RecoveredWithin(ms: Long, events: Long)
   
   // events
   case class PingObserved(sentTimestamp: Long)
@@ -56,7 +59,7 @@ object LatencyBenchEntity {
     ClusterSharding(system).start(
       typeName,
       LatencyBenchEntity.props(),
-      ClusterShardingSettings(system).withRole("shard"),
+      ClusterShardingSettings(system),
       extractEntityId,
       extractShardId(BenchSettings(system).NumberOfShards)
     )
@@ -65,41 +68,58 @@ object LatencyBenchEntity {
     ClusterSharding(system)
       .startProxy(
         typeName,
-        Some("shard"),
+        None, // don't require the shard role Some("shard"),
         extractEntityId,
         extractShardId(BenchSettings(system).NumberOfShards)
       )
 }
 
-class LatencyBenchEntity extends Actor with ActorLogging { // FIXME: FIX CASSANDRA AND DO PERSISTENCE BENCH
+class LatencyBenchEntity extends PersistentActor with ActorLogging {
   import LatencyBenchEntity._
 
   log.info(s"Started ${self.path.name}")
   
   var persistentPingCounter = 0
-//  override def persistenceId: String = self.path.name
+  def persistenceId: String = self.path.name
 
-  val started = System.currentTimeMillis()
+  val started = System.nanoTime()
+  lazy val recovered = System.nanoTime()
 
-  override def receive = {// Command: Receive = {
+  // def receive = {
+  def receiveCommand = {
     case msg: PingFirst =>
       // simple roundtrip
-      sender() ! PongFirst(msg, started)
+      val recoveryTime = (recovered - started).nanos
+      sender() ! PongFirst(msg, wakeupTimeMicros = recoveryTime.toMicros)
     
     case msg: PingSecond =>
       // simple roundtrip
       sender() ! PongSecond(msg)
 
-//    case msg: PersistAndPing =>
-//      // roundtrip with write
-//      log.debug("Got persist-ping from [{}]", sender())
-//      val before = System.nanoTime()
-//      persist(PingObserved(msg.sentTimestamp)) { _ =>
-//        val persistMs = (System.nanoTime() - before).nanos.toMillis
-//        PersistenceHistograms.persistTiming.recordValue(persistMs)
-//        persistentPingCounter += 1
-//        sender() ! Pong(msg)
-//      }
+    case msg: PersistAndPing =>
+      // roundtrip with write
+      val before = System.nanoTime()
+      persist(PingObserved(msg.pingCreatedNanoTime)) { _ =>
+        val singlePersistTime = (System.nanoTime() - before).nanos
+        PersistenceHistograms.recordSinglePersistTiming(singlePersistTime)
+        persistentPingCounter += 1
+      }
+      persistAll(List.fill(99)(PingObserved(msg.pingCreatedNanoTime))) { _ =>
+        persistentPingCounter += 99
+        sender() ! PongFirst(msg, started)
+        context.stop(self)
+      }
+      
+    case msg: PersistPingSecond =>
+      sender() ! RecoveredWithin((recovered - started).nanos.toMillis, persistentPingCounter)
+      deleteMessages(lastSequenceNr)
+    
+    case DeleteMessagesSuccess(s) =>
+      log.info(s"Cleared messages (until ${s})")
+      context stop self
+    case DeleteMessagesFailure(ex, s) =>
+      log.warning(s"Failed to clear messages (until ${s}), ex = ${ex}")
+      context stop self
       
     case other =>
       log.info("received something else: " + other)
@@ -111,8 +131,8 @@ class LatencyBenchEntity extends Actor with ActorLogging { // FIXME: FIX CASSAND
       persistentPingCounter += 1
 
     case _: RecoveryCompleted =>
-      val recoveryMs = (System.nanoTime() - started).nanos
-      PersistenceHistograms.recoveryTiming.recordValue(recoveryMs.toMillis)
+      val recoveryTime = (recovered - started).nanos
+      PersistenceHistograms.recordRecoveryPersistTiming(recoveryTime)
 
   }
   

@@ -16,33 +16,28 @@
 
 package com.lightbend.akka.bench.sharding.latency
 
-import java.util.concurrent.TimeoutException
-
 import akka.actor.{ Actor, ActorLogging, ActorRef, CoordinatedShutdown, Props, ReceiveTimeout, Terminated }
 import akka.cluster.ClusterEvent.MemberUp
 import akka.cluster.{ Cluster, ClusterEvent }
-import akka.event.Logging
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.HttpResponse
+import akka.stream._
 import akka.stream.scaladsl.{ Keep, Sink, Source }
-import akka.stream.{ ActorMaterializer, Attributes, KillSwitches, ThrottleMode }
 import com.lightbend.akka.bench.sharding.BenchSettings
+import com.lightbend.akka.bench.sharding.latency.LatencyBenchEntity.PingFirst
 import org.HdrHistogram.Histogram
 
-import scala.concurrent.Future
 import scala.concurrent.duration._
 
 
 object PingLatencyCoordinator {
 
-  def props() = Props(new PingLatencyCoordinator)
+  def props(region: ActorRef): Props = Props(new PingLatencyCoordinator(region))
 }
 
-class PingLatencyCoordinator extends Actor with ActorLogging {
+class PingLatencyCoordinator(region: ActorRef) extends Actor with ActorLogging {
 
   val system = context.system
   val cluster = Cluster(system)
-  
+
   cluster.subscribe(self, ClusterEvent.InitialStateAsEvents, classOf[ClusterEvent.MemberUp])
   var seenUpNodes = 0
 
@@ -54,7 +49,7 @@ class PingLatencyCoordinator extends Actor with ActorLogging {
       // don't start benching until all nodes up
       if (seenUpNodes == BenchSettings(system).MinimumNodes) {
         log.info("Saw [{}] nodes UP starting bench", seenUpNodes)
-        context.watch(system.actorOf(PingingActor.props(), "pinging-actor"))
+        context.watch(system.actorOf(PingingActor.props(region), "pinging-actor"))
         context.become(benchmarking)
       }
   }
@@ -73,83 +68,95 @@ class PingLatencyCoordinator extends Actor with ActorLogging {
  */
 object PingingActor {
 
-  def props() = Props(new PingingActor())
+  def props(region: ActorRef): Props = Props(new PingingActor(region))
 }
 
-class PingingActor extends Actor with ActorLogging {
-
+class PingingActor(region: ActorRef) extends Actor with ActorLogging {
   val settings = BenchSettings(context.system)
-  val proxy = LatencyBenchEntity.proxy(context.system)
 
-  val pongRecipient = context.watch(context.actorOf(Props(new PongRecipient), "pong-recipient"))
+  val pongRecipient = context.watch(context.actorOf(Props(new PongRecipient(region)), "pong-recipient"))
 
   implicit val materializer = ActorMaterializer()(context.system)
+
+  // will be set once first ping/pong completes and we know the coordinator is alive
+  var killSwitch: Option[UniqueKillSwitch] = None
+
+  override def preStart: Unit = {
+    region ! PingFirst("wake-up-ping", System.nanoTime())
+  }
   
-  val persistMode: Boolean =
-    sys.env.get("MODE").exists(_ == "persist")
-  log.info(Console.RED + s"Using mode: ${persistMode}" + Console.RESET)
-  
-  val killSwitch =
-    Source(0L to Int.MaxValue - 10)
-      // just chill a bit to give sharding time to start, doesn't really belong here but whatever
-      .throttle(settings.PingsPerSecond, 1.second, settings.PingsPerSecond, ThrottleMode.shaping)
-      .viaMat(KillSwitches.single)(Keep.right)
-      .toMat(Sink.foreach { n =>
-        val entityId = (n % settings.UniqueEntities).toString
-
-        val msg =
-          if (persistMode) LatencyBenchEntity.PersistAndPing(entityId, System.nanoTime())
-          else LatencyBenchEntity.PingFirst(entityId, System.nanoTime())
-
-        proxy.!(msg)(sender = pongRecipient)
-      })(Keep.left).run()
-
   def receive = {
+    case LatencyBenchEntity.PongFirst(ping, wakeup) =>
+      log.info(Console.GREEN + s"=== FIRST WAKE UP TOOK: ${wakeup.micros} μs ===" + Console.RESET)
+      log.info(s"Starting benchmark, hitting ${settings.UniqueEntities} unique entities in [${settings.NumberOfShards}] shards")
+
+      killSwitch = Some(
+        Source(0L to Int.MaxValue - 10)
+          // just chill a bit to give sharding time to start, doesn't really belong here but whatever
+          .throttle(settings.PingsPerSecond, 1.second, settings.PingsPerSecond, ThrottleMode.shaping)
+          .viaMat(KillSwitches.single)(Keep.right)
+          .toMat(Sink.foreach { n =>
+            val entityId = (n % settings.UniqueEntities).toString
+
+            // PERSIST + PONG:
+            // val msg = LatencyBenchEntity.PersistAndPing(entityId, System.nanoTime())
+            // just PING/PONG
+            val msg = LatencyBenchEntity.PingFirst(entityId, System.nanoTime())
+
+            region.!(msg)(sender = pongRecipient)
+          })(Keep.left).run()
+      )
 
     case Terminated(_) =>
-      killSwitch.shutdown()
       context.stop(self)
+  }
 
+  override def postStop(): Unit = {
+    killSwitch.foreach(_.shutdown())
   }
 
 
 }
 
-class PongRecipient extends Actor with ActorLogging {
+class PongRecipient(region: ActorRef) extends Actor with ActorLogging {
   case object Tick
+
   import context.dispatcher
-  
+
   var pongsReceived = 0L
   val maxRecordedTimespan = 20 * 1000 * 1000
-  
+
   // time between first message to sharded actor and it coming back:
-  val initialPingPongTiming = new Histogram(maxRecordedTimespan, 3)
+  val initialWakeUpPingPongTiming = new Histogram(maxRecordedTimespan, 3)
   // time to ping an already started sharded actor: 
   val secondPingPongTiming = new Histogram(maxRecordedTimespan, 3)
-  // time between sending message, and the sharded actor finishing start:
-  val wakeupTiming = new Histogram(maxRecordedTimespan, 3)
+  // given 100 persisted messages, how long did a *replay* take
+  val replayTiming = new Histogram(maxRecordedTimespan, 3)
 
   context.system.scheduler.schedule(2.second, 2.second, self, Tick)
   context.setReceiveTimeout(20.seconds)
 
   def receive = {
-    case LatencyBenchEntity.PongFirst(ping, wakeupTime) =>
-      val msSpan = (System.nanoTime() - ping.sentTimestamp).nanos
+    case LatencyBenchEntity.PongFirst(ping, _) =>
+      val msSpan = (System.nanoTime() - ping.pingCreatedNanoTime).nanos
       pongsReceived += 1
-      initialPingPongTiming.recordValue(msSpan.toMillis)
-      wakeupTiming.recordValue(msSpan.toMillis)
-      
-      sender() ! LatencyBenchEntity.PingSecond(ping.id, System.nanoTime())
-    
+      initialWakeUpPingPongTiming.recordValue(msSpan.toMicros)
+
+      // we know it has stopped itself now! so this will be a wakeup with replay!
+      region ! LatencyBenchEntity.PingSecond(ping.id, System.nanoTime())
+
+    case LatencyBenchEntity.RecoveredWithin(ms, events) =>
+      replayTiming.recordValue(ms)
+
     case LatencyBenchEntity.PongSecond(ping) =>
-      val msSpan = (System.nanoTime() - ping.sentTimestamp).nanos
+      val msSpan = (System.nanoTime() - ping.pingCreatedNanoTime).nanos
       pongsReceived += 1
-      secondPingPongTiming.recordValue(msSpan.toMillis)
-      // keep that sharded actor alive
-      
+      secondPingPongTiming.recordValue(msSpan.toMicros)
+    // keep that sharded actor alive
+
     case Tick =>
       printHistograms()
-      
+
     case ReceiveTimeout =>
       log.info("Terminating, received {} pongs, and receive timeout triggered ", pongsReceived)
       printHistograms()
@@ -158,10 +165,12 @@ class PongRecipient extends Actor with ActorLogging {
   }
 
   def printHistograms(): Unit = {
-    println("====== initial ping pong timing (shard wake-up) ======")
-    initialPingPongTiming.outputPercentileDistribution(System.out, 1.0)
-    println("====== ping pong timing (alive actor) ======")
-    secondPingPongTiming.outputPercentileDistribution(System.out, 1.0)
+    println("====== wake up and persist 100 events (shard wake-up) ======")
+    initialWakeUpPingPongTiming.outputPercentileDistribution(System.out, 1.0)
+    //    println("====== ping pong timing (alive actor) ======")
+    //    secondPingPongTiming.outputPercentileDistribution(System.out, 1.0)
+    println("====== replay time of 100 events, wakeup via sharding (replay) ======")
+    replayTiming.outputPercentileDistribution(System.out, 1.0)
   }
-  
+
 }
