@@ -3,12 +3,12 @@
 cd /home/akka/akka
 git checkout wip-gcloud-faninout-2m
 
-declare -r TEST="akka.remote.artery.FanOutThroughputSpec"
+declare -r TEST="$1"
 
 # cpu-level
 
-/home/akka/run-multinode-benchmark.sh "-Dtest=cpu1-a -Dakka.remote.artery.advanced.idle-cpu-level=1 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-min=4 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-max=4 -Dakka.remote.artery.advanced.inbound-lanes=4" $TEST
-/home/akka/run-multinode-benchmark.sh "-Dtest=cpu1-b -Dakka.remote.artery.advanced.idle-cpu-level=1 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-min=4 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-max=4 -Dakka.remote.artery.advanced.inbound-lanes=4" $TEST
+/home/akka/run-multinode-benchmark.sh "-Dtest=cpu1-a -Dakka.remote.artery.advanced.idle-cpu-level=5 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-min=4 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-max=4 -Dakka.remote.artery.advanced.inbound-lanes=4" $TEST
+/home/akka/run-multinode-benchmark.sh "-Dtest=cpu1-b -Dakka.remote.artery.advanced.idle-cpu-level=5 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-min=4 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-max=4 -Dakka.remote.artery.advanced.inbound-lanes=4" $TEST
 
 #/home/akka/run-multinode-benchmark.sh "-Dtest=012-a -Dakka.remote.artery.advanced.idle-cpu-level=3 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-min=4 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-max=4 -Dakka.remote.artery.advanced.inbound-lanes=4" $TEST
 #/home/akka/run-multinode-benchmark.sh "-Dtest=012-b -Dakka.remote.artery.advanced.idle-cpu-level=3 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-min=4 -Dakka.remote.default-remote-dispatcher.fork-join-executor.parallelism-max=4 -Dakka.remote.artery.advanced.inbound-lanes=4" $TEST

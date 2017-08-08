@@ -77,12 +77,14 @@ declare -r LOGS1="$LOGS_BASE/$IP1"
 
 declare -r AERON_DIR=/dev/shm/aeron-akka
 
+declare -r TOTAL_MESSAGES_FACTOR=200
+
 # -Daeron.threading.mode=DEDICATED -Daeron.sender.idle.strategy=org.agrona.concurrent.BusySpinIdleStrategy -Daeron.receiver.idle.strategy=org.agrona.concurrent.BusySpinIdleStrategy
 declare -r MEDIA_DRIVER_ARGS="-Daeron.threading.mode=SHARED_NETWORK -Xms1g -Xmx1g -XX:+UseCompressedOops -XX:MaxDirectMemorySize=256m -XX:ReservedCodeCacheSize=256m -XX:BiasedLockingStartupDelay=0 -Daeron.mtu.length=16384 -Daeron.socket.so_sndbuf=2097152 -Daeron.socket.so_rcvbuf=2097152 -Daeron.rcv.initial.window.length=2097152 -Daeron.term.buffer.sparse.file=false -Dagrona.disable.bounds.checks=true"
 
 declare -r MULTI_NODE_DIR="/home/akka/tmp-akka-multi-node"
 declare -r MULTI_NODE_ARGS="-Dakka.test.multi-node=true -Dakka.test.multi-node.targetDirName=$MULTI_NODE_DIR -Dakka.remote.artery.advanced.flight-recorder.destination=target -J-Dmultinode.Xms1024M -J-Dmultinode.Xmx1024M -J-Dmultinode.XX:+PrintGCDetails -J-Dmultinode.XX:+PrintGCTimeStamps -Dmultinode.XX:BiasedLockingStartupDelay=0 -Dmultinode.Daeron.mtu.length=16384 -Dmultinode.Daeron.rcv.buffer.length=16384 -Dmultinode.Daeron.socket.so_sndbuf=2097152 -Dmultinode.Daeron.socket.so_rcvbuf=2097152 -Dmultinode.Daeron.rcv.initial.window.length=2097152 -Dmultinode.Dagrona.disable.bounds.checks=true -J-Dmultinode.XX:+UseCompressedOops -Dmultinode.XX:MaxDirectMemorySize=256m -J-Dmultinode.XX:+UnlockDiagnosticVMOptions -Dmultinode.XX:GuaranteedSafepointInterval=300000"
-declare -r COMMON_ARGS="-Dakka.test.LatencySpec.totalMessagesFactor=10 -Dakka.test.LatencySpec.repeatCount=3 -Dakka.test.MaxThroughputSpec.totalMessagesFactor=200 -Dakka.remote.artery.advanced.embedded-media-driver=off -Dakka.remote.artery.advanced.aeron-dir=$AERON_DIR"
+declare -r COMMON_ARGS="-Dakka.test.LatencySpec.totalMessagesFactor=$TOTAL_MESSAGES_FACTOR -Dakka.test.LatencySpec.repeatCount=3 -Dakka.test.MaxThroughputSpec.totalMessagesFactor=$TOTAL_MESSAGES_FACTOR -Dakka.test.FanInThroughputSpec.totalMessagesFactor=$TOTAL_MESSAGES_FACTOR -Dakka.test.FanOutThroughputSpec.totalMessagesFactor=$TOTAL_MESSAGES_FACTOR -Dakka.remote.artery.advanced.embedded-media-driver=off -Dakka.remote.artery.advanced.aeron-dir=$AERON_DIR"
 #declare -r COMMON_ARGS="-Dakka.remote.artery.advanced.embedded-media-driver=off -Dakka.remote.artery.advanced.aeron-dir=$AERON_DIR"
 
 #declare -r ARGS="-Dakka.remote.artery.advanced.inbound-lanes=1"
