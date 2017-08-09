@@ -50,8 +50,6 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
 
   context.system.scheduler.scheduleOnce(120.seconds, self, SessionTimeout)
 
-  val numberOfMessages = messagesPerPublisher * numberOfPublishers
-
   val participantHosts = Cluster(context.system).state.members.collect {
     case m if m.status == MemberStatus.Up =>
       context.actorSelection(RootActorPath(m.address) / "user" / PubSubHost.Name)
@@ -108,9 +106,7 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
     case CollectResults =>
       implicit val timeout: Timeout = 30.seconds
       log.info(s"Collecting results from ${subscribers.size} subscribers")
-      subscribers
-        .map(_ ? Subscriber.CollectStats)
-        .map(_.pipeTo(self))
+      subscribers.foreach(_ ! Subscriber.CollectStats)
       context.become(waitingFor(subscribers.size))
 
     case SessionTimeout =>
@@ -123,7 +119,7 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
     case i: Int =>
       if (subscribers > 1) context.become(waitingFor(subscribers - 1, resultSoFar + i, failed))
       else {
-        log.info(s"Published $numberOfMessages messages, ${resultSoFar+i} arrived")
+        log.info(s"Published messages, ${resultSoFar+i} arrived")
         val result = BenchmarkCoordinator.BenchResult(
           sessionId,
           numberOfNodes,
@@ -132,7 +128,6 @@ class BenchmarkSession(sessionId: Int, numberOfNodes: Int, messagesPerPublisher:
           numberOfPublishers,
           numberOfSubscribers,
           resultSoFar + i,
-          numberOfMessages,
           failed)
         context.parent ! result
         stopSession()

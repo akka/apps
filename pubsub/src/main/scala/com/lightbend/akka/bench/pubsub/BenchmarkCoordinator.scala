@@ -35,7 +35,6 @@ object BenchmarkCoordinator {
     numberOfPublishers: Int,
     numberOfSubscribers: Int,
     messagesArrived: Int,
-    totalNumberOfMessages: Int,
     failed: Int)
 
   case object GetResults

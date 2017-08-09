@@ -38,7 +38,7 @@ object HttpApi {
     import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
     import spray.json._
     import DefaultJsonProtocol._
-    implicit val benchResultFormat = jsonFormat9(BenchmarkCoordinator.BenchResult)
+    implicit val benchResultFormat = jsonFormat8(BenchmarkCoordinator.BenchResult)
     implicit val resultFormat = jsonFormat1(BenchmarkCoordinator.AllResults)
 
     val routes = concat(

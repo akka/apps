@@ -16,14 +16,12 @@
 
 package com.lightbend.akka.bench.pubsub
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.Random
 import akka.actor._
 import akka.cluster.pubsub._
-import akka.pattern.{ask, pipe}
-import akka.util.Timeout
 import DistributedPubSubMediator.{Subscribe, SubscribeAck}
+import scala.concurrent.duration._
 
 object Subscriber {
   def props(runId: Int, topic: Int, topicUntil: Int, mediator: ActorRef, coordinator: ActorRef): Props =
@@ -31,6 +29,8 @@ object Subscriber {
 
   case class Subscribed(runId: Int)
   case object CollectStats
+  case object SubscriptionTimedOut
+  case object SubscribeNextBatch
 }
 class Subscriber(runId: Int, topic: Int, topicUntil: Int, mediator: ActorRef, coordinator: ActorRef) extends Actor with ActorLogging {
   import Subscriber._
@@ -38,18 +38,60 @@ class Subscriber(runId: Int, topic: Int, topicUntil: Int, mediator: ActorRef, co
   var messagesReceived = 0
   val random = new Random()
 
-  implicit val timeout: Timeout = 5.seconds
-  implicit val ec: ExecutionContext = context.dispatcher
+  val SubscriptionTimeout = 10.seconds
+  val SubscribeBatchSize = 100
+  import context.dispatcher
 
-  Future.sequence((topic until topicUntil).map { n =>
-    mediator ? Subscribe(n.toString, self)
-  }).pipeTo(self)
+  var topicAcksLeft = topicUntil - topic
+  var subscriptionsInFlight = 0
+  (topic until topicUntil).foreach { n =>
+    mediator ! Subscribe(n.toString, self)
+  }
 
-  override def receive = {
-    case _: Seq[_] ⇒
-      log.info(s"Subscribed to topics $topic-$topicUntil")
-      coordinator ! Subscribed(runId)
-    case Payload(n) =>
+  override def receive = subscribing()
+
+  def subscribing(): Receive = {
+    // to not overwhelm the mediator we subscribe in batches
+    var subscribingTask: Option[Cancellable] = None
+    def scheduleNextSubscription(): Unit =
+      subscribingTask = Some(context.system.scheduler.scheduleOnce(10.millis, self, SubscribeNextBatch))
+    val subscriptionTimeoutTask = context.system.scheduler.scheduleOnce(SubscriptionTimeout, self, SubscriptionTimedOut)
+    val subscriptions = (topic until topicUntil).iterator
+    self ! SubscribeNextBatch
+
+    {
+      case _: SubscribeAck =>
+        topicAcksLeft -= 1
+        subscriptionsInFlight -= 1
+        if (topicAcksLeft == 0) {
+          log.info(s"Subscribed to topics $topic-$topicUntil")
+          context.become(subscribed)
+          subscribingTask.foreach(_.cancel())
+          subscriptionTimeoutTask.cancel()
+          coordinator ! Subscribed(runId)
+        }
+
+      case SubscribeNextBatch =>
+        val numberOfNewSubscriptions = SubscribeBatchSize - subscriptionsInFlight
+        if (numberOfNewSubscriptions > 0) {
+          subscriptions.take(numberOfNewSubscriptions).foreach { n =>
+            mediator ! Subscribe(n.toString, self)
+          }
+          subscriptionsInFlight += numberOfNewSubscriptions
+        }
+        if (subscriptions.hasNext) scheduleNextSubscription()
+
+
+      case SubscriptionTimeout =>
+        log.error("Subscriptions timed out")
+        subscribingTask.foreach(_.cancel())
+        context.stop(self)
+
+    }
+  }
+
+  def subscribed: Receive = {
+    case Payload(_) =>
       messagesReceived += 1
     case CollectStats =>
       // log.info("Collecting stats from this subscriber")
