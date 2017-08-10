@@ -32,6 +32,8 @@ case object PersistShardingBenchmark extends ShardingBenchmarkMode
 case object RawPingPongShardingBenchmark extends ShardingBenchmarkMode
 
 class BenchSettings(system: ActorSystem) extends Extension {
+  val warmupAll: Boolean = config.getBoolean("warmup-all")
+
   private val config = system.settings.config.getConfig("shard-bench")
   val Mode = config.getString("mode") match {
       case "persist" => PersistShardingBenchmark

@@ -30,6 +30,8 @@ object LatencyBenchEntity {
   // commands
   sealed trait EntityCommand { def id: String }
   sealed trait PingLike { def id: String; def pingCreatedNanoTime: Long }
+  final case class WarmupPing(id: Int)
+  
   final case class PingFirst(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
   final case class PongFirst(original: PingLike, wakeupTimeMicros: Long)
 
@@ -50,10 +52,12 @@ object LatencyBenchEntity {
 
   val extractEntityId: ShardRegion.ExtractEntityId = {
     case msg: LatencyBenchEntity.EntityCommand => (msg.id, msg)
+    case msg: LatencyBenchEntity.WarmupPing => (msg.id.toString, msg)
   }
 
   def extractShardId(numberOfEntities: Int): ShardRegion.ExtractShardId = {
     case msg: LatencyBenchEntity.EntityCommand => (Math.abs(msg.id.hashCode) % numberOfEntities).toString
+    case msg: LatencyBenchEntity.WarmupPing => (msg.id % numberOfEntities).toString
   }
 
   def startRegion(system: ActorSystem) =

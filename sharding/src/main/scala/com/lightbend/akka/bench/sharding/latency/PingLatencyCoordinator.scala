@@ -16,13 +16,13 @@
 
 package com.lightbend.akka.bench.sharding.latency
 
-import akka.actor.{ Actor, ActorLogging, ActorRef, CoordinatedShutdown, Props, ReceiveTimeout, Terminated }
+import akka.actor.{ Actor, ActorLogging, ActorRef, CoordinatedShutdown, PoisonPill, Props, ReceiveTimeout, Terminated }
 import akka.cluster.ClusterEvent.MemberUp
 import akka.cluster.{ Cluster, ClusterEvent }
 import akka.stream._
 import akka.stream.scaladsl.{ Keep, Sink, Source }
 import com.lightbend.akka.bench.sharding.{ BenchSettings, PersistShardingBenchmark, RawPingPongShardingBenchmark }
-import com.lightbend.akka.bench.sharding.latency.LatencyBenchEntity.PingFirst
+import com.lightbend.akka.bench.sharding.latency.LatencyBenchEntity.{ PingFirst, WarmupPing }
 import org.HdrHistogram.Histogram
 
 import scala.concurrent.duration._
@@ -82,7 +82,26 @@ class PingingActor(region: ActorRef) extends Actor with ActorLogging {
   var killSwitch: Option[UniqueKillSwitch] = None
 
   override def preStart: Unit = {
-    region ! PingFirst("wake-up-ping", System.nanoTime())
+
+    if (settings.warmupAll) {
+      Source(0 to (settings.UniqueEntities / 10))
+        // just chill a bit to give sharding time to start, doesn't really belong here but whatever
+        .throttle(settings.PingsPerSecond, 1.second, settings.PingsPerSecond, ThrottleMode.shaping)
+        .map(n => {
+          val msg = WarmupPing(n)
+
+          region ! msg // wake up!
+          region ! PoisonPill  // and die...!
+        }) runWith Sink.onComplete { done =>
+
+        log.info("==== DONE WARMING UP ALL REGIONS ====")
+        Thread.sleep(1000)
+        region ! PingFirst("wake-up-ping", System.nanoTime())
+      }
+    } else {
+      // no warmup
+      region ! PingFirst("wake-up-ping", System.nanoTime())
+    }
   }
   
   def receive = {
