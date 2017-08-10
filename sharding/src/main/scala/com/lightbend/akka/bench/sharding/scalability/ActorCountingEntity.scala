@@ -24,10 +24,10 @@ object ActorCountingEntity {
 
   sealed trait HasId { def id: Long }
   // sent from master to entity
-  final case class Start(override val id: Long, sentTimestamp: Long) extends HasId
-  // entity replies with that once it has started, the time is the sender's time, 
+  final case class Start(batchCount: Int, override val id: Long, sentTimestamp: Long) extends HasId
+  // entity replies with that once it has started, the time is the sender's time,
   // so the sender can calculate how long it took for the actor to get the message
-  final case class Ready(sentTimestamp: Long)
+  final case class Ready(batchCount: Int, sentTimestamp: Long)
 
   def props() = Props[ActorCountingEntity]
 
@@ -48,26 +48,16 @@ object ActorCountingEntity {
       ActorCountingEntity.props(),
       ClusterShardingSettings(system),
       extractEntityId,
-      extractShardId(BenchSettings(system).NumberOfShards)
-    )
+      extractShardId(BenchSettings(system).NumberOfShards))
 
-  def proxy(system: ActorSystem): ActorRef =
-    ClusterSharding(system)
-      .startProxy(
-        typeName,
-        None, // don't require the shard region; Some("shard"),
-        extractEntityId,
-        extractShardId(BenchSettings(system).NumberOfShards)
-      )
 }
-
 
 /** Many many many instances of this Actor will be started in sharding. */
 class ActorCountingEntity extends Actor {
 
   override def receive: Receive = {
-    case ActorCountingEntity.Start(_, senderTimestamp) =>
-      sender() ! ActorCountingEntity.Ready(senderTimestamp)
-      // stay around in memory, forevermore!
+    case ActorCountingEntity.Start(batchCount, _, senderTimestamp) =>
+      sender() ! ActorCountingEntity.Ready(batchCount, senderTimestamp)
+    // stay around in memory, forevermore!
   }
 }

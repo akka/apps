@@ -32,19 +32,18 @@ object LatencyBenchEntity {
   sealed trait PingLike { def id: String; def pingCreatedNanoTime: Long }
   final case class PingFirst(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
   final case class PongFirst(original: PingLike, wakeupTimeMicros: Long)
-  
+
   final case class PingSecond(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
   final case class PongSecond(original: PingLike)
 
   final case class PersistAndPing(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
   final case class PersistPingSecond(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
   final case class RecoveredWithin(micros: Long, events: Long)
-  
+
   // events
   case class PingObserved(sentTimestamp: Long)
 
   def props() = Props[LatencyBenchEntity]
-
 
   // sharding config
   val typeName = "bench-entity"
@@ -63,28 +62,18 @@ object LatencyBenchEntity {
       LatencyBenchEntity.props(),
       ClusterShardingSettings(system),
       extractEntityId,
-      extractShardId(BenchSettings(system).NumberOfShards)
-    )
+      extractShardId(BenchSettings(system).NumberOfShards))
 
-  def proxy(system: ActorSystem) =
-    ClusterSharding(system)
-      .startProxy(
-        typeName,
-        None, // don't require the shard role Some("shard"),
-        extractEntityId,
-        extractShardId(BenchSettings(system).NumberOfShards)
-      )
 }
 
 class LatencyBenchEntity extends PersistentActor with ActorLogging {
   import LatencyBenchEntity._
-  
+
   def persistenceId: String = self.path.name
 
   val started = System.nanoTime()
   lazy val recovered = System.nanoTime()
   lazy val recoveryTime = (recovered - started).nanos
-
 
   override def recovery: Recovery = Recovery(toSequenceNr = 100)
 
@@ -94,7 +83,7 @@ class LatencyBenchEntity extends PersistentActor with ActorLogging {
       log.info(s"Started ${self.path.name}, received 1st msg, within ${PrettyDuration.format(recoveryTime)} from start")
       PersistenceHistograms.recordRecoveryPersistTiming(recoveryTime)
       sender() ! PongFirst(msg, wakeupTimeMicros = recoveryTime.toMicros)
-    
+
     case msg: PingSecond =>
       // simple roundtrip
       sender() ! PongSecond(msg)
@@ -102,7 +91,7 @@ class LatencyBenchEntity extends PersistentActor with ActorLogging {
     case msg: PersistAndPing =>
       if (lastSequenceNr < 100) {
         val stillNeedToPersistNTimes = 100 - lastSequenceNr
-        
+
         // roundtrip with write
         val before = System.nanoTime()
         persist(PingObserved(msg.pingCreatedNanoTime)) { _ =>
@@ -110,7 +99,7 @@ class LatencyBenchEntity extends PersistentActor with ActorLogging {
           PersistenceHistograms.recordSinglePersistTiming(singlePersistTime)
           log.info(s"Single persist in ${self.path.name} took ${PrettyDuration.format(singlePersistTime)}")
         }
-        
+
         if (stillNeedToPersistNTimes > 1) {
           val n: Int = stillNeedToPersistNTimes.toInt - 1
           persistAll(List.fill(n)(PingObserved(msg.pingCreatedNanoTime))) { _ =>
@@ -126,23 +115,20 @@ class LatencyBenchEntity extends PersistentActor with ActorLogging {
       }
 
       sender() ! RecoveredWithin((recovered - started).nanos.toMicros, 100)
-      
-      
+
     case other =>
       log.info("received something else: " + other)
       throw new Exception("What is: " + other.getClass)
   }
-  
+
   def receiveRecover: Receive = {
     case _: PingObserved =>
-      // log.info(s"REPLAY: Ping observed @ ${lastSequenceNr}")
+    // log.info(s"REPLAY: Ping observed @ ${lastSequenceNr}")
 
     case _: RecoveryCompleted =>
       PersistenceHistograms.recordRecoveryPersistTiming(recoveryTime)
 
   }
-  
-
 
 }
 
