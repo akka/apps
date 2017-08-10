@@ -42,7 +42,7 @@ run() {
 
     echo 'Running $CLAZZ on $IP2'
     cd /home/akka/apps
-    /home/akka/sbt -J-Daeron.term.buffer.length=4194304 -Dsbt.log.noformat=true '; project sharding; runMain $CLAZZ' > $LOGS2/log-sharding.txt
+    /home/akka/sbt -Daeron.term.buffer.length=4194304 -J-Xms4G -J-Xmx4G -Dsbt.log.noformat=true '; project sharding; runMain $CLAZZ' > $LOGS2/log-sharding.txt
   " &
       
   sleep 2

@@ -27,8 +27,16 @@ object BenchSettings extends ExtensionId[BenchSettings] {
     new BenchSettings(system)
 }
 
+sealed trait ShardingBenchmarkMode
+case object PersistShardingBenchmark extends ShardingBenchmarkMode
+case object RawPingPongShardingBenchmark extends ShardingBenchmarkMode
+
 class BenchSettings(system: ActorSystem) extends Extension {
   private val config = system.settings.config.getConfig("shard-bench")
+  val Mode = config.getString("mode") match {
+      case "persist" => PersistShardingBenchmark
+    case _ => RawPingPongShardingBenchmark
+  }
   val UniqueEntities = config.getInt("unique-entities")
 //  val NumberOfPings = config.getInt("number-of-pings")
   val PingsPerSecond = config.getInt("pings-per-second")
