@@ -21,7 +21,7 @@ import akka.cluster.ClusterEvent.MemberUp
 import akka.cluster.{ Cluster, ClusterEvent }
 import akka.stream._
 import akka.stream.scaladsl.{ Keep, Sink, Source }
-import com.lightbend.akka.bench.sharding.BenchSettings
+import com.lightbend.akka.bench.sharding.{ BenchSettings, PersistShardingBenchmark, RawPingPongShardingBenchmark }
 import com.lightbend.akka.bench.sharding.latency.LatencyBenchEntity.PingFirst
 import org.HdrHistogram.Histogram
 
@@ -87,21 +87,20 @@ class PingingActor(region: ActorRef) extends Actor with ActorLogging {
   
   def receive = {
     case LatencyBenchEntity.PongFirst(ping, wakeup) =>
-      log.info(Console.GREEN + s"=== FIRST WAKE UP TOOK: ${wakeup.micros} μs ===" + Console.RESET)
-      log.info(s"Starting benchmark, hitting ${settings.UniqueEntities} unique entities in [${settings.NumberOfShards}] shards")
+      log.info(Console.GREEN + s"=== FIRST WAKE UP TOOK: ${PrettyDuration.format(wakeup.micros)} ===" + Console.RESET)
 
       killSwitch = Some(
-        Source(0L to Int.MaxValue - 10)
+        Source(0L to settings.UniqueEntities)
           // just chill a bit to give sharding time to start, doesn't really belong here but whatever
           .throttle(settings.PingsPerSecond, 1.second, settings.PingsPerSecond, ThrottleMode.shaping)
           .viaMat(KillSwitches.single)(Keep.right)
           .toMat(Sink.foreach { n =>
             val entityId = (n % settings.UniqueEntities).toString
 
-            // PERSIST + PONG:
-            // val msg = LatencyBenchEntity.PersistAndPing(entityId, System.nanoTime())
-            // just PING/PONG
-            val msg = LatencyBenchEntity.PingFirst(entityId, System.nanoTime())
+             val msg = settings.Mode match {
+               case PersistShardingBenchmark => LatencyBenchEntity.PersistAndPing(entityId, System.nanoTime())
+               case RawPingPongShardingBenchmark => LatencyBenchEntity.PingFirst(entityId, System.nanoTime())
+             } 
 
             region.!(msg)(sender = pongRecipient)
           })(Keep.left).run()
@@ -124,10 +123,10 @@ class PongRecipient(region: ActorRef) extends Actor with ActorLogging {
   import context.dispatcher
 
   var pongsReceived = 0L
-  val maxRecordedTimespan = 20 * 1000 * 1000
+  val maxRecordedTimespan = 60 * 1000 * 1000
 
   // time between first message to sharded actor and it coming back:
-  val initialWakeUpPingPongTiming = new Histogram(maxRecordedTimespan, 3)
+  val initialWakeUpShardedActotsTiming = new Histogram(maxRecordedTimespan, 3)
   // time to ping an already started sharded actor: 
   val secondPingPongTiming = new Histogram(maxRecordedTimespan, 3)
   // given 100 persisted messages, how long did a *replay* take
@@ -140,18 +139,29 @@ class PongRecipient(region: ActorRef) extends Actor with ActorLogging {
     case LatencyBenchEntity.PongFirst(ping, _) =>
       val msSpan = (System.nanoTime() - ping.pingCreatedNanoTime).nanos
       pongsReceived += 1
-      initialWakeUpPingPongTiming.recordValue(msSpan.toMicros)
+      try 
+        initialWakeUpShardedActotsTiming.recordValue(msSpan.toMicros)
+      catch {
+        case ex: ArrayIndexOutOfBoundsException =>
+          log.error(ex, "Tried to record {}, which was out of bounds for the histogram!", PrettyDuration.format(msSpan))
+      }
 
       // we know it has stopped itself now! so this will be a wakeup with replay!
-      region ! LatencyBenchEntity.PingSecond(ping.id, System.nanoTime())
+      region ! LatencyBenchEntity.PingSecond(ping.id, pingCreatedNanoTime = System.nanoTime())
 
-    case LatencyBenchEntity.RecoveredWithin(ms, events) =>
-      replayTiming.recordValue(ms)
+    case LatencyBenchEntity.RecoveredWithin(recoveryTimeMicros, events) =>
+      log.info(s"Actor ${sender.path.name} replayed ${events} events in ${PrettyDuration.format(recoveryTimeMicros.micros)}")
+      replayTiming.recordValue(recoveryTimeMicros)
 
     case LatencyBenchEntity.PongSecond(ping) =>
       val msSpan = (System.nanoTime() - ping.pingCreatedNanoTime).nanos
       pongsReceived += 1
-      secondPingPongTiming.recordValue(msSpan.toMicros)
+      try 
+        secondPingPongTiming.recordValue(msSpan.toMicros)
+      catch {
+        case ex: ArrayIndexOutOfBoundsException =>
+          log.error(ex, "Tried to record {}, which was out of bounds for the histogram!", PrettyDuration.format(msSpan))
+      }
     // keep that sharded actor alive
 
     case Tick =>
@@ -165,11 +175,13 @@ class PongRecipient(region: ActorRef) extends Actor with ActorLogging {
   }
 
   def printHistograms(): Unit = {
-    println("====== wake up and persist 100 events (shard wake-up) ======")
-    initialWakeUpPingPongTiming.outputPercentileDistribution(System.out, 1.0)
-    //    println("====== ping pong timing (alive actor) ======")
-    //    secondPingPongTiming.outputPercentileDistribution(System.out, 1.0)
-    println("====== replay time of 100 events, wakeup via sharding (replay) ======")
+    println("\n\n====== entity wake-up (measured on remote entity) ======")
+    initialWakeUpShardedActotsTiming.outputPercentileDistribution(System.out, 1.0)
+    
+    println("\n\n====== ping pong timing (alive actor) ======")
+    secondPingPongTiming.outputPercentileDistribution(System.out, 1.0)
+    
+    println("\n\n====== replay time of 100 events, wakeup via sharding (replay) ======")
     replayTiming.outputPercentileDistribution(System.out, 1.0)
   }
 

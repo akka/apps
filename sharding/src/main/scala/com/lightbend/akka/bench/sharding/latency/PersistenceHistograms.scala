@@ -28,13 +28,23 @@ import scala.concurrent.duration.Duration
 object PersistenceHistograms {
 
   private val singlePersistTiming = new Histogram(20 * 1000 * 1000, 3)
-  def recordSinglePersistTiming(t: Duration): Unit = synchronized { 
-    singlePersistTiming.recordValue(t.toMicros)
+  def recordSinglePersistTiming(t: Duration): Unit = singlePersistTiming.synchronized { 
+    try 
+      singlePersistTiming.recordValue(t.toMicros)
+    catch {
+      case ex: ArrayIndexOutOfBoundsException =>
+        throw new Exception(s"Tried to record ${PrettyDuration.format(t)}, which was out of bounds for the histogram!", ex)
+    }
   }
   
   private val recoveryTiming = new Histogram(60 * 1000 * 1000, 3)
-  def recordRecoveryPersistTiming(t: Duration): Unit = synchronized { 
-    recoveryTiming.recordValue(t.toMicros)
+  def recordRecoveryPersistTiming(t: Duration): Unit = recoveryTiming.synchronized {
+    try
+      recoveryTiming.recordValue(t.toMicros)
+    catch {
+      case ex: ArrayIndexOutOfBoundsException =>
+        throw new Exception(s"Tried to record ${PrettyDuration.format(t)}, which was out of bounds for the histogram!", ex)
+    }
   }
 
   object PrintHistograms
@@ -51,9 +61,12 @@ class PersistenceHistograms extends Actor with ActorLogging {
   override def receive: Receive = {
     case _ =>
       println("========= Histogram of sharded actor wakeup times ======== ")
-      PersistenceHistograms.recoveryTiming.outputPercentileDistribution(System.out, 1.0)
-      
-      println("========= Histogram of persist times ======== ")
-      PersistenceHistograms.singlePersistTiming.outputPercentileDistribution(System.out, 1.0)
+      PersistenceHistograms.recoveryTiming.synchronized { 
+        PersistenceHistograms.recoveryTiming.outputPercentileDistribution(System.out, 1.0)
+      }
+//      println("========= Histogram of persist times ======== ")
+//      PersistenceHistograms.singlePersistTiming.synchronized { 
+//        PersistenceHistograms.singlePersistTiming.outputPercentileDistribution(System.out, 1.0)
+//      }
   }
 }

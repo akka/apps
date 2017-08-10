@@ -16,9 +16,11 @@
 
 package com.lightbend.akka.bench.sharding.latency
 
+import java.util.Locale
+
 import akka.actor.{ Actor, ActorLogging, ActorSystem, Props }
 import akka.cluster.sharding.{ ClusterSharding, ClusterShardingSettings, ShardRegion }
-import akka.persistence.{ DeleteMessagesFailure, DeleteMessagesSuccess, PersistentActor, RecoveryCompleted }
+import akka.persistence._
 import com.lightbend.akka.bench.sharding.BenchSettings
 
 import scala.concurrent.duration._
@@ -36,7 +38,7 @@ object LatencyBenchEntity {
 
   final case class PersistAndPing(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
   final case class PersistPingSecond(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
-  final case class RecoveredWithin(ms: Long, events: Long)
+  final case class RecoveredWithin(micros: Long, events: Long)
   
   // events
   case class PingObserved(sentTimestamp: Long)
@@ -76,20 +78,21 @@ object LatencyBenchEntity {
 
 class LatencyBenchEntity extends PersistentActor with ActorLogging {
   import LatencyBenchEntity._
-
-  log.info(s"Started ${self.path.name}")
   
-  var persistentPingCounter = 0
   def persistenceId: String = self.path.name
 
   val started = System.nanoTime()
   lazy val recovered = System.nanoTime()
+  lazy val recoveryTime = (recovered - started).nanos
 
-  // def receive = {
+
+  override def recovery: Recovery = Recovery(toSequenceNr = 100)
+
   def receiveCommand = {
     case msg: PingFirst =>
       // simple roundtrip
-      val recoveryTime = (recovered - started).nanos
+      log.info(s"Started ${self.path.name}, received 1st msg, within ${PrettyDuration.format(recoveryTime)} from start")
+      PersistenceHistograms.recordRecoveryPersistTiming(recoveryTime)
       sender() ! PongFirst(msg, wakeupTimeMicros = recoveryTime.toMicros)
     
     case msg: PingSecond =>
@@ -97,29 +100,33 @@ class LatencyBenchEntity extends PersistentActor with ActorLogging {
       sender() ! PongSecond(msg)
 
     case msg: PersistAndPing =>
-      // roundtrip with write
-      val before = System.nanoTime()
-      persist(PingObserved(msg.pingCreatedNanoTime)) { _ =>
-        val singlePersistTime = (System.nanoTime() - before).nanos
-        PersistenceHistograms.recordSinglePersistTiming(singlePersistTime)
-        persistentPingCounter += 1
-      }
-      persistAll(List.fill(99)(PingObserved(msg.pingCreatedNanoTime))) { _ =>
-        persistentPingCounter += 99
+      if (lastSequenceNr < 100) {
+        val stillNeedToPersistNTimes = 100 - lastSequenceNr
+        
+        // roundtrip with write
+        val before = System.nanoTime()
+        persist(PingObserved(msg.pingCreatedNanoTime)) { _ =>
+          val singlePersistTime = (System.nanoTime() - before).nanos
+          PersistenceHistograms.recordSinglePersistTiming(singlePersistTime)
+          log.info(s"Single persist in ${self.path.name} took ${PrettyDuration.format(singlePersistTime)}")
+        }
+        
+        if (stillNeedToPersistNTimes > 1) {
+          val n: Int = stillNeedToPersistNTimes.toInt - 1
+          persistAll(List.fill(n)(PingObserved(msg.pingCreatedNanoTime))) { _ =>
+            log.info(s"DONE PERSISTING: at sequence ${lastSequenceNr}")
+
+            sender() ! PongFirst(msg, started)
+            context.stop(self)
+          }
+        }
+      } else {
         sender() ! PongFirst(msg, started)
         context.stop(self)
       }
+
+      sender() ! RecoveredWithin((recovered - started).nanos.toMicros, 100)
       
-    case msg: PersistPingSecond =>
-      sender() ! RecoveredWithin((recovered - started).nanos.toMillis, persistentPingCounter)
-      deleteMessages(lastSequenceNr)
-    
-    case DeleteMessagesSuccess(s) =>
-      log.info(s"Cleared messages (until ${s})")
-      context stop self
-    case DeleteMessagesFailure(ex, s) =>
-      log.warning(s"Failed to clear messages (until ${s}), ex = ${ex}")
-      context stop self
       
     case other =>
       log.info("received something else: " + other)
@@ -128,14 +135,75 @@ class LatencyBenchEntity extends PersistentActor with ActorLogging {
   
   def receiveRecover: Receive = {
     case _: PingObserved =>
-      persistentPingCounter += 1
+      // log.info(s"REPLAY: Ping observed @ ${lastSequenceNr}")
 
     case _: RecoveryCompleted =>
-      val recoveryTime = (recovered - started).nanos
       PersistenceHistograms.recordRecoveryPersistTiming(recoveryTime)
 
   }
   
 
+
+}
+
+object PrettyDuration {
+
+  /**
+   * JAVA API
+   * Selects most apropriate TimeUnit for given duration and formats it accordingly, with 4 digits precision
+   */
+  def format(duration: Duration): String = duration.pretty
+
+  /**
+   * JAVA API
+   * Selects most apropriate TimeUnit for given duration and formats it accordingly
+   */
+  def format(duration: Duration, includeNanos: Boolean, precision: Int): String = duration.pretty(includeNanos, precision)
+
+  implicit class PrettyPrintableDuration(val duration: Duration) extends AnyVal {
+
+    /** Selects most apropriate TimeUnit for given duration and formats it accordingly, with 4 digits precision **/
+    def pretty: String = pretty(includeNanos = false)
+
+    /** Selects most apropriate TimeUnit for given duration and formats it accordingly */
+    def pretty(includeNanos: Boolean, precision: Int = 4): String = {
+      require(precision > 0, "precision must be > 0")
+
+      duration match {
+        case d: FiniteDuration ⇒
+          val nanos = d.toNanos
+          val unit = chooseUnit(nanos)
+          val value = nanos.toDouble / NANOSECONDS.convert(1, unit)
+
+          s"%.${precision}g %s%s".formatLocal(Locale.ROOT, value, abbreviate(unit), if (includeNanos) s" ($nanos ns)" else "")
+
+        case Duration.MinusInf ⇒ s"-∞ (minus infinity)"
+        case Duration.Inf      ⇒ s"∞ (infinity)"
+        case _                 ⇒ "undefined"
+      }
+    }
+
+    def chooseUnit(nanos: Long): TimeUnit = {
+      val d = nanos.nanos
+
+      if (d.toDays > 0) DAYS
+      else if (d.toHours > 0) HOURS
+      else if (d.toMinutes > 0) MINUTES
+      else if (d.toSeconds > 0) SECONDS
+      else if (d.toMillis > 0) MILLISECONDS
+      else if (d.toMicros > 0) MICROSECONDS
+      else NANOSECONDS
+    }
+
+    def abbreviate(unit: TimeUnit): String = unit match {
+      case NANOSECONDS  ⇒ "ns"
+      case MICROSECONDS ⇒ "μs"
+      case MILLISECONDS ⇒ "ms"
+      case SECONDS      ⇒ "s"
+      case MINUTES      ⇒ "min"
+      case HOURS        ⇒ "h"
+      case DAYS         ⇒ "d"
+    }
+  }
 
 }
