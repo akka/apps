@@ -24,30 +24,29 @@ import akka.cluster.http.management.ClusterHttpManagement
 import com.lightbend.akka.bench.sharding.BenchmarkConfig
 
 import scala.util.Try
+import akka.cluster.singleton.ClusterSingletonManager
+import akka.actor.PoisonPill
+import akka.cluster.singleton.ClusterSingletonManagerSettings
 
 object ShardingStartLatencyApp extends App {
 
   // setup for clound env -------------------------------------------------------------
   val conf = BenchmarkConfig.load()
-  // end of setup for clound env ------------------------------------------------------ 
+  // end of setup for clound env ------------------------------------------------------
 
   val systemName = Try(conf.getString("akka.system-name")).getOrElse("ShardingStartLatencySystem")
   implicit val system = ActorSystem(systemName, conf)
-  
+
   // management -----------
   val cluster = Cluster(system)
   ClusterHttpManagement(cluster).start()
   // end of management ----
-  
-  val selfHostName = InetAddress.getLocalHost.getHostName
 
   val region = LatencyBenchEntity.startRegion(system)
 
-  if (selfHostName contains "akka-sharding-001") { 
-    system.actorOf(PingLatencyCoordinator.props(region), "bench-coordinator")
-    println(Console.RED + s"Started as PingLatencyCoordinator (${selfHostName})" + Console.RESET)
-  } else {
-    system.actorOf(PersistenceHistograms.props(), "persistence-histogram-printer")
-    println(Console.GREEN + s"Started as LatencyBenchEntity (${selfHostName})" + Console.RESET)
-  }
+  val benchCoordinatorProps =
+    ClusterSingletonManager.props(PingLatencyCoordinator.props(region), PoisonPill,
+      ClusterSingletonManagerSettings(system))
+  system.actorOf(benchCoordinatorProps, "bench-coordinator")
+  system.actorOf(PersistenceHistograms.props(), "persistence-histogram-printer")
 }

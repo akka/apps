@@ -28,15 +28,15 @@ import scala.concurrent.duration.Duration
 object PersistenceHistograms {
 
   private val singlePersistTiming = new Histogram(20 * 1000 * 1000, 3)
-  def recordSinglePersistTiming(t: Duration): Unit = singlePersistTiming.synchronized { 
-    try 
+  def recordSinglePersistTiming(t: Duration): Unit = singlePersistTiming.synchronized {
+    try
       singlePersistTiming.recordValue(t.toMicros)
     catch {
       case ex: ArrayIndexOutOfBoundsException =>
         throw new Exception(s"Tried to record ${PrettyDuration.format(t)}, which was out of bounds for the histogram!", ex)
     }
   }
-  
+
   private val recoveryTiming = new Histogram(60 * 1000 * 1000, 3)
   def recordRecoveryPersistTiming(t: Duration): Unit = recoveryTiming.synchronized {
     try
@@ -57,16 +57,16 @@ class PersistenceHistograms extends Actor with ActorLogging {
   import context.dispatcher
 
   context.system.scheduler.schedule(3.seconds, 3.seconds, self, "ping")
-  
+
   override def receive: Receive = {
     case _ =>
       println("========= Histogram of sharded actor wakeup times ======== ")
-      PersistenceHistograms.recoveryTiming.synchronized { 
+      PersistenceHistograms.recoveryTiming.synchronized {
         PersistenceHistograms.recoveryTiming.outputPercentileDistribution(System.out, 1.0)
       }
-//      println("========= Histogram of persist times ======== ")
-//      PersistenceHistograms.singlePersistTiming.synchronized { 
-//        PersistenceHistograms.singlePersistTiming.outputPercentileDistribution(System.out, 1.0)
-//      }
+    //      println("========= Histogram of persist times ======== ")
+    //      PersistenceHistograms.singlePersistTiming.synchronized {
+    //        PersistenceHistograms.singlePersistTiming.outputPercentileDistribution(System.out, 1.0)
+    //      }
   }
 }
