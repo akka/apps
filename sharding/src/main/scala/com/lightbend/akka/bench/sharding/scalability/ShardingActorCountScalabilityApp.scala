@@ -24,25 +24,29 @@ import akka.cluster.http.management.ClusterHttpManagement
 import com.lightbend.akka.bench.sharding.BenchmarkConfig
 
 import scala.util.Try
+import akka.actor.PoisonPill
+import akka.cluster.singleton.ClusterSingletonManagerSettings
+import akka.cluster.singleton.ClusterSingletonManager
 
 object ShardingActorCountScalabilityApp extends App {
 
   // setup for clound env -------------------------------------------------------------
   val conf = BenchmarkConfig.load()
-  // end of setup for clound env ------------------------------------------------------ 
+  // end of setup for clound env ------------------------------------------------------
 
   val systemName = Try(conf.getString("akka.system-name")).getOrElse("ShardingActorCountScalabilitySystem")
   implicit val system = ActorSystem(systemName, conf)
-  
+
   // management -----------
   val cluster = Cluster(system)
   ClusterHttpManagement(cluster).start()
   // end of management ----
-  
-  
-  if (InetAddress.getLocalHost.getHostName contains "akka-sharding-001") {
-    system.actorOf(Props[ActorCountingBenchmarkMaster], "bench-coordinator")
-  } else {
-    ActorCountingEntity.startRegion(system)
-  }
+
+  val region = ActorCountingEntity.startRegion(system)
+
+  val benchCoordinatorProps =
+    ClusterSingletonManager.props(ActorCountingBenchmarkMaster.props(region), PoisonPill,
+      ClusterSingletonManagerSettings(system))
+  system.actorOf(benchCoordinatorProps, "bench-coordinator")
+
 }
