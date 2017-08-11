@@ -39,7 +39,7 @@ object BenchmarkConfig {
       if (rootConfFile.exists) ConfigFactory.parseFile(rootConfFile)
       else ConfigFactory.empty("no-root-application-conf-found")
 
-    ConfigFactory.load(rootConf.withFallback(bindAddressConf).withFallback(ConfigFactory.defaultApplication()))
+    ConfigFactory.load(bindAddressConf.withFallback(rootConf).withFallback(ConfigFactory.defaultApplication()))
   }
 
 }
