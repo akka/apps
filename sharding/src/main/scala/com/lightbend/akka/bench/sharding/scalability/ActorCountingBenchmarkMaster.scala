@@ -30,6 +30,7 @@ import akka.actor.Props
 import akka.cluster.ClusterEvent.MemberUp
 import akka.cluster.sharding.ShardRegion
 import akka.cluster.sharding.ShardRegion.ClusterShardingStats
+import akka.cluster.ClusterEvent
 
 object ActorCountingBenchmarkMaster {
   def props(region: ActorRef): Props =
@@ -55,19 +56,19 @@ class ActorCountingBenchmarkMaster(region: ActorRef) extends Actor with ActorLog
 
   override def preStart(): Unit = {
     context.system.scheduler.schedule(0.seconds, 5.seconds, self, ShardRegion.GetClusterShardingStats(60.seconds))
-    
-    cluster.subscribe(self, classOf[MemberUp])
+
+    cluster.subscribe(self, ClusterEvent.InitialStateAsEvents, classOf[MemberUp])
   }
 
   override def receive: Receive = {
     case MemberUp(member) =>
       members += 1
       log.info(s"Member up: ${member}, members @ [${members}]")
-      
+
       if (members == settings.MinimumNodes) {
         context.system.scheduler.schedule(5.seconds, addActorsInterval, self, AddMoreActors)
       }
-      
+
     case ActorCountingEntity.Ready(batchCount, startTime) =>
       // not really goal of this benchmark though:
       // if (log.isDebugEnabled)
@@ -101,14 +102,15 @@ class ActorCountingBenchmarkMaster(region: ActorRef) extends Actor with ActorLog
 
     case getStats: ShardRegion.GetClusterShardingStats =>
       region ! getStats
-      
+
     case stats: ShardRegion.ClusterShardingStats =>
-      log.info("====== cluster sharding stats ======= \n" + { 
-        stats.regions.map { case (reg, s) =>
-         "  REGION: " + reg + "" + 
-          s.stats.map(i => s"\n    ${i._1}: ${i._2}")
-      }
-        
+      log.info("====== cluster sharding stats ======= \n" + {
+        stats.regions.map {
+          case (reg, s) =>
+            "  REGION: " + reg + "" +
+              s.stats.map(i => s"\n    ${i._1}: ${i._2}")
+        }
+
       })
   }
 }
