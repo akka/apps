@@ -27,13 +27,16 @@ import com.lightbend.akka.bench.sharding.BenchSettings
 
 import scala.concurrent.duration._
 import akka.actor.Props
+import akka.cluster.ClusterEvent.MemberUp
+import akka.cluster.sharding.ShardRegion
+import akka.cluster.sharding.ShardRegion.ClusterShardingStats
 
 object ActorCountingBenchmarkMaster {
-  def props(sharding: ActorRef): Props =
-    Props(new ActorCountingBenchmarkMaster(sharding))
+  def props(region: ActorRef): Props =
+    Props(new ActorCountingBenchmarkMaster(region))
 }
 
-class ActorCountingBenchmarkMaster(sharding: ActorRef) extends Actor with ActorLogging {
+class ActorCountingBenchmarkMaster(region: ActorRef) extends Actor with ActorLogging {
   implicit val dispatcher = context.system.dispatcher
   val settings = BenchSettings(context.system)
   val addActorsBatch: Int = settings.AddActorsPerBatch
@@ -48,12 +51,23 @@ class ActorCountingBenchmarkMaster(sharding: ActorRef) extends Actor with ActorL
   var totalAliveConfirmedActors = 0L
   var batchCount = 0
   var timesWhenWeStartedBatch = Map.empty[Int, Long]
+  var members = 0
 
   override def preStart(): Unit = {
-    context.system.scheduler.schedule(0.seconds, addActorsInterval, self, AddMoreActors)
+    context.system.scheduler.schedule(0.seconds, 5.seconds, self, ShardRegion.GetClusterShardingStats(60.seconds))
+    
+    cluster.subscribe(self, classOf[MemberUp])
   }
 
   override def receive: Receive = {
+    case MemberUp(member) =>
+      members += 1
+      log.info(s"Member up: ${member}, members @ [${members}]")
+      
+      if (members == settings.MinimumNodes) {
+        context.system.scheduler.schedule(5.seconds, addActorsInterval, self, AddMoreActors)
+      }
+      
     case ActorCountingEntity.Ready(batchCount, startTime) =>
       // not really goal of this benchmark though:
       // if (log.isDebugEnabled)
@@ -79,10 +93,23 @@ class ActorCountingBenchmarkMaster(sharding: ActorRef) extends Actor with ActorL
       var i = 0
       while (i < addActorsBatch) {
         totalStartingActorsInSharding += 1
-        sharding ! ActorCountingEntity.Start(batchCount, totalStartingActorsInSharding, System.nanoTime())
+        region ! ActorCountingEntity.Start(batchCount, totalStartingActorsInSharding, System.nanoTime())
         i += 1
       }
+
       pendingAliveConfirmation += addActorsBatch
+
+    case getStats: ShardRegion.GetClusterShardingStats =>
+      region ! getStats
+      
+    case stats: ShardRegion.ClusterShardingStats =>
+      log.info("====== cluster sharding stats ======= \n" + { 
+        stats.regions.map { case (reg, s) =>
+         "  REGION: " + reg + "" + 
+          s.stats.map(i => s"\n    ${i._1}: ${i._2}")
+      }
+        
+      })
   }
 }
 
