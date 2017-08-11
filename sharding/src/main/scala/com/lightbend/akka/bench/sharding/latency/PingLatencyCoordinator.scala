@@ -21,8 +21,9 @@ import akka.cluster.ClusterEvent.MemberUp
 import akka.cluster.{ Cluster, ClusterEvent }
 import akka.stream._
 import akka.stream.scaladsl.{ Keep, Sink, Source }
+import akka.util.Timeout
 import com.lightbend.akka.bench.sharding.{ BenchSettings, PersistShardingBenchmark, RawPingPongShardingBenchmark }
-import com.lightbend.akka.bench.sharding.latency.LatencyBenchEntity.{ PingFirst, WarmupPing }
+import com.lightbend.akka.bench.sharding.latency.LatencyBenchEntity.{ PingFirst, WarmupPing, WarmupStop }
 import org.HdrHistogram.Histogram
 
 import scala.concurrent.duration._
@@ -83,15 +84,20 @@ class PingingActor(region: ActorRef) extends Actor with ActorLogging {
 
   override def preStart: Unit = {
 
-    if (settings.warmupAll) {
+    if (settings.WarmupAll) {
       Source(0 to (settings.UniqueEntities / 10))
         // just chill a bit to give sharding time to start, doesn't really belong here but whatever
         .throttle(settings.PingsPerSecond, 1.second, settings.PingsPerSecond, ThrottleMode.shaping)
-        .map(n => {
-          val msg = WarmupPing(n)
+        .mapAsync(parallelism = 10)(n => {
+          import akka.pattern.ask
+          import context.dispatcher
+          implicit val t = Timeout(40.seconds)
 
-          region ! msg // wake up!
-          region ! PoisonPill  // and die...!
+          log.info(s"Warming up ${n}...")
+          (region ? WarmupPing(n)).map(_ => {
+            log.info(s"Stopping ${n}...")
+            region ! WarmupStop(n)
+          })
         }) runWith Sink.onComplete { done =>
 
         log.info("==== DONE WARMING UP ALL REGIONS ====")
@@ -181,6 +187,10 @@ class PongRecipient(region: ActorRef) extends Actor with ActorLogging {
         case ex: ArrayIndexOutOfBoundsException =>
           log.error(ex, "Tried to record {}, which was out of bounds for the histogram!", PrettyDuration.format(msSpan))
       }
+      
+      // AGAIN!!!
+      region ! LatencyBenchEntity.WarmupStop(ping.id.toInt)
+      region ! LatencyBenchEntity.PersistAndPing(ping.id, System.nanoTime())
     // keep that sharded actor alive
 
     case Tick =>

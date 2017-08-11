@@ -30,7 +30,8 @@ object LatencyBenchEntity {
   // commands
   sealed trait EntityCommand { def id: String }
   sealed trait PingLike { def id: String; def pingCreatedNanoTime: Long }
-  final case class WarmupPing(id: Int)
+  final case class WarmupPing(i: Int) extends EntityCommand { override def id = i.toString }
+  final case class WarmupStop(i: Int) extends EntityCommand { override def id = i.toString }
   
   final case class PingFirst(id: String, pingCreatedNanoTime: Long) extends EntityCommand with PingLike
   final case class PongFirst(original: PingLike, wakeupTimeMicros: Long)
@@ -51,13 +52,13 @@ object LatencyBenchEntity {
   val typeName = "bench-entity"
 
   val extractEntityId: ShardRegion.ExtractEntityId = {
+    case msg: LatencyBenchEntity.WarmupPing => (s"warmup-${msg.id}", msg)
+    case msg: LatencyBenchEntity.WarmupStop => (s"warmup-${msg.id}", msg)
     case msg: LatencyBenchEntity.EntityCommand => (msg.id, msg)
-    case msg: LatencyBenchEntity.WarmupPing => (msg.id.toString, msg)
   }
 
   def extractShardId(numberOfEntities: Int): ShardRegion.ExtractShardId = {
     case msg: LatencyBenchEntity.EntityCommand => (Math.abs(msg.id.hashCode) % numberOfEntities).toString
-    case msg: LatencyBenchEntity.WarmupPing => (msg.id % numberOfEntities).toString
   }
 
   def startRegion(system: ActorSystem) =
@@ -82,6 +83,31 @@ class LatencyBenchEntity extends PersistentActor with ActorLogging {
   override def recovery: Recovery = Recovery(toSequenceNr = 100)
 
   def receiveCommand = {
+    // ----- warmup ------------------------------ 
+    case LatencyBenchEntity.WarmupPing(_) =>
+      persist("Hello world") { _ =>
+        log.info("Warmed up!")
+          // nothing
+      }
+      persist("Hello world") { _ =>
+        log.info("Warmed up!")
+          // nothing
+      }
+      persist("Hello world") { _ =>
+        log.info("Warmed up!")
+          // nothing
+      }
+      persist("Hello world") { _ =>
+        log.info("Warmed up!")
+          // nothing
+        sender() ! "warmed up"
+      }
+      
+    case LatencyBenchEntity.WarmupStop(_) =>
+      context stop self
+    // ----- end of warmup ------------------------ 
+      
+
     case msg: PingFirst =>
       // simple roundtrip
       log.info(s"Started ${self.path.name}, received 1st msg, within ${PrettyDuration.format(recoveryTime)} from start")
@@ -129,7 +155,7 @@ class LatencyBenchEntity extends PersistentActor with ActorLogging {
     case _: PingObserved =>
     // log.info(s"REPLAY: Ping observed @ ${lastSequenceNr}")
 
-    case _: RecoveryCompleted =>
+    case _: RecoveryCompleted if !(self.path.name contains "warmup")=>
       PersistenceHistograms.recordRecoveryPersistTiming(recoveryTime)
 
   }
