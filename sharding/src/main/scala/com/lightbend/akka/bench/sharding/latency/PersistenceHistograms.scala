@@ -56,7 +56,7 @@ class PersistenceHistograms extends Actor with ActorLogging {
   import scala.concurrent.duration._
   import context.dispatcher
 
-  context.system.scheduler.schedule(3.seconds, 3.seconds, self, "ping")
+  context.system.scheduler.schedule(10.seconds, 10.seconds, self, "ping")
 
   override def receive: Receive = {
     case _ =>

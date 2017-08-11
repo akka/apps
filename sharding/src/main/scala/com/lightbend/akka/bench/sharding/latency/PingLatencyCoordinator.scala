@@ -26,7 +26,7 @@ import com.lightbend.akka.bench.sharding.latency.LatencyBenchEntity.PingFirst
 import org.HdrHistogram.Histogram
 
 import scala.concurrent.duration._
-
+import akka.actor.PoisonPill
 
 object PingLatencyCoordinator {
 
@@ -49,15 +49,20 @@ class PingLatencyCoordinator(region: ActorRef) extends Actor with ActorLogging {
       // don't start benching until all nodes up
       if (seenUpNodes == BenchSettings(system).MinimumNodes) {
         log.info("Saw [{}] nodes UP starting bench", seenUpNodes)
-        context.watch(system.actorOf(PingingActor.props(region), "pinging-actor"))
+        startPinging()
         context.become(benchmarking)
       }
   }
 
   def benchmarking: Actor.Receive = {
     case Terminated(_) =>
-      log.info("My work here is done")
-      CoordinatedShutdown(system).run()
+      log.info("My work here is done, restarting bench")
+      //CoordinatedShutdown(system).run()
+      startPinging()
+  }
+
+  def startPinging(): Unit = {
+    context.watch(system.actorOf(PingingActor.props(region), "pinging-actor"))
   }
 
 }
@@ -84,7 +89,7 @@ class PingingActor(region: ActorRef) extends Actor with ActorLogging {
   override def preStart: Unit = {
     region ! PingFirst("wake-up-ping", System.nanoTime())
   }
-  
+
   def receive = {
     case LatencyBenchEntity.PongFirst(ping, wakeup) =>
       log.info(Console.GREEN + s"=== FIRST WAKE UP TOOK: ${PrettyDuration.format(wakeup.micros)} ===" + Console.RESET)
@@ -97,14 +102,16 @@ class PingingActor(region: ActorRef) extends Actor with ActorLogging {
           .toMat(Sink.foreach { n =>
             val entityId = (n % settings.UniqueEntities).toString
 
-             val msg = settings.Mode match {
-               case PersistShardingBenchmark => LatencyBenchEntity.PersistAndPing(entityId, System.nanoTime())
-               case RawPingPongShardingBenchmark => LatencyBenchEntity.PingFirst(entityId, System.nanoTime())
-             } 
+            val msg = settings.Mode match {
+              case PersistShardingBenchmark     => LatencyBenchEntity.PersistAndPing(entityId, System.nanoTime())
+              case RawPingPongShardingBenchmark => LatencyBenchEntity.PingFirst(entityId, System.nanoTime())
+            }
 
             region.!(msg)(sender = pongRecipient)
-          })(Keep.left).run()
-      )
+
+            if (n == settings.UniqueEntities)
+              self ! PoisonPill // done
+          })(Keep.left).run())
 
     case Terminated(_) =>
       context.stop(self)
@@ -113,7 +120,6 @@ class PingingActor(region: ActorRef) extends Actor with ActorLogging {
   override def postStop(): Unit = {
     killSwitch.foreach(_.shutdown())
   }
-
 
 }
 
@@ -127,19 +133,19 @@ class PongRecipient(region: ActorRef) extends Actor with ActorLogging {
 
   // time between first message to sharded actor and it coming back:
   val initialWakeUpShardedActotsTiming = new Histogram(maxRecordedTimespan, 3)
-  // time to ping an already started sharded actor: 
+  // time to ping an already started sharded actor:
   val secondPingPongTiming = new Histogram(maxRecordedTimespan, 3)
   // given 100 persisted messages, how long did a *replay* take
   val replayTiming = new Histogram(maxRecordedTimespan, 3)
 
-  context.system.scheduler.schedule(2.second, 2.second, self, Tick)
+  context.system.scheduler.schedule(10.second, 10.second, self, Tick)
   context.setReceiveTimeout(20.seconds)
 
   def receive = {
     case LatencyBenchEntity.PongFirst(ping, _) =>
       val msSpan = (System.nanoTime() - ping.pingCreatedNanoTime).nanos
       pongsReceived += 1
-      try 
+      try
         initialWakeUpShardedActotsTiming.recordValue(msSpan.toMicros)
       catch {
         case ex: ArrayIndexOutOfBoundsException =>
@@ -156,7 +162,7 @@ class PongRecipient(region: ActorRef) extends Actor with ActorLogging {
     case LatencyBenchEntity.PongSecond(ping) =>
       val msSpan = (System.nanoTime() - ping.pingCreatedNanoTime).nanos
       pongsReceived += 1
-      try 
+      try
         secondPingPongTiming.recordValue(msSpan.toMicros)
       catch {
         case ex: ArrayIndexOutOfBoundsException =>
@@ -177,10 +183,10 @@ class PongRecipient(region: ActorRef) extends Actor with ActorLogging {
   def printHistograms(): Unit = {
     println("\n\n====== entity wake-up (measured on remote entity) ======")
     initialWakeUpShardedActotsTiming.outputPercentileDistribution(System.out, 1.0)
-    
+
     println("\n\n====== ping pong timing (alive actor) ======")
     secondPingPongTiming.outputPercentileDistribution(System.out, 1.0)
-    
+
     println("\n\n====== replay time of 100 events, wakeup via sharding (replay) ======")
     replayTiming.outputPercentileDistribution(System.out, 1.0)
   }
