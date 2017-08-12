@@ -29,6 +29,7 @@ lazy val sharding = project.enablePlugins(commonPlugins: _*)
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
+      "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,
       "com.typesafe.akka"     %% "akka-persistence"             % Akka,
       "org.hdrhistogram"       % "HdrHistogram"                 % "2.1.9",
       "com.typesafe.akka"     %% "akka-persistence-cassandra"   % "0.54",
