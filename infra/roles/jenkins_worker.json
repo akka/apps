@@ -8,6 +8,8 @@
 
   "run_list": [
     "recipe[sbt-manual]",
+    "recipe[sbt_credentials]",
+    "recipe[java-manual]",
     "recipe[docker_simple]",
     "recipe[wrk2]",
     "recipe[ab]"
