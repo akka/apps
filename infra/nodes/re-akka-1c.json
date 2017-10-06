@@ -2,21 +2,16 @@
     "chef_environment": "_default", 
     "ipaddress-internal": "172.31.0.162", 
     "ipaddress": "54.171.5.185", 
-    "name": "akka-node-002", 
+    "name": "re-akka-1c",
     
     "akka": {
-      "system_name": "BenchmarkSystem",
+      "system_name": "MultiDcSystem",
       "port": 2551,
-      "roles": ["shard"],
-      
+      "roles": [],
       "seed_nodes": ["172.31.0.162"],
-      "minumum_nodes": 3
+      "minumum_nodes": 2
     },
-    
-    "cassandra": {
-      "contact_points": ["72.31.13.199"]
-    },
-    
+
     "authorization": {
       "sudo": {
         "users": ["akka", "ubuntu", "ktoso", "patriknw", "chbatey"],
@@ -32,6 +27,7 @@
       "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
     },
     "run_list": [
-       "role[benchmark]"
+       "role[benchmark]",
+       "role[akka-re]"
     ]
 }

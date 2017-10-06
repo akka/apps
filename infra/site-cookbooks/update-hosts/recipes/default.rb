@@ -27,13 +27,22 @@ template '/home/akka/run-max-throughput-benchmark.sh' do
   source 'run-max-throughput-benchmark.sh.rb'
 end
 
-template '/home/akka/run-max-throughput-benchmark.sh' do 
+template '/home/akka/run-latency-benchmark.sh' do
   source 'run-latency-benchmark.sh.rb'
 end
 
-cookbook_file '/home/akka/multi-node-test.hosts' do 
+template '/home/akka/run-multi-dc-test.sh' do
+  source 'run-multi-dc-test.sh.rb'
+end
+
+template '/home/akka/run-latency-benchmark.sh' do
+  source 'run-latency-benchmark.sh.rb'
+end
+
+cookbook_file '/home/akka/multi-node-test.hosts' do
   source 'multi-node-test.hosts'
 end
+
 
 bash "chown generated files for akka user" do
   code <<-EOH

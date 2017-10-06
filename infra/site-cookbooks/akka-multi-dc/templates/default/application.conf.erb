@@ -1,0 +1,74 @@
+# ------------------------ WARNING -------------------------------- 
+#      This file is generated automatically via Chef scripts. 
+#      Do not edit manually - all your changes WILL be lost.
+# ------------------------ WARNING -------------------------------- 
+akka {
+
+  actor.provider = cluster
+
+  system-name = "<%= node['akka']['system_name'] %>"
+
+  remote {
+    netty.tcp {
+      # going across DCs so need the external IP
+      hostname = "<%= node['ipaddress'] %>"
+      port = <%= node['akka']['port'] %>
+    }
+    
+    artery {
+      # enabled = on this is up to the app to decide
+      canonical.hostname = "<%= node['ipaddress'] %>"
+      canonical.port = <%= node['akka']['port'] %>
+    }
+  } 
+
+  cluster {
+
+    # total number of nodes this benchmark will run on (same as number of nodes in multi-node-test.hosts)
+    minimum-nodes = <%= node['akka']['minumum_nodes'] %>
+
+    roles = [
+      <%= (node['akka']['roles'].map do |role|
+        "\"#{role}\"" 
+      end).join(",\n      ") %>
+    ]
+
+    seed-nodes = [
+      <%= (node['akka']['seed_nodes'].map do |seed|
+         "\"akka://#{node['akka']['system_name']}@#{seed}:#{node['akka']['port']}\""
+      end).join(",\n      ") %>
+    ]
+
+    http.management {
+      hostname = "0.0.0.0"
+      port = 19999
+    }
+  }
+
+  persistence {
+    snapshot-store.plugin = "cassandra-snapshot-store"
+
+    multi-data-center {
+      all-data-centers = ["eu-central", "eu-west"]
+    }
+  }
+
+}
+
+cassandra-journal-multi-dc {
+  contact-points = [
+    <%= (node['cassandra']['contact_points'].map do |node|
+       "\"#{node}\""
+    end).join(",\n    ") %>
+  ]
+}
+
+cassandra-query-journal-multi-dc {
+ contact-points = [
+    <%= (node['cassandra']['contact_points'].map do |node|
+       "\"#{node}\""
+    end).join(",\n    ") %>
+  ]
+}
+
+
