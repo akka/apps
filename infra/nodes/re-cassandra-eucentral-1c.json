@@ -1,0 +1,30 @@
+{
+  "chef_environment": "_default", 
+  "ipaddress-internal": "172.31.45.92",
+  "ipaddress": "18.194.123.172",
+  "name": "172.31.45.92",
+  "java": {
+    "jdk_version": 8,
+    "oracle": {
+      "accept_oracle_download_terms": true
+    },
+    "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
+  },
+  "cassandra": {
+    "seed_node": "34.240.13.89",
+    "install_java": false,
+    "config": {
+      "cluster_name": "Test Cluster",
+      "snitch": "Ec2MultiRegionSnitch"
+    }
+  },
+  "run_list": [
+      "role[cassandra-re]"
+  ],
+  "apt": {
+    "confd": {
+      "force_confold": true,
+      "force_confask": false
+    }
+  }
+}

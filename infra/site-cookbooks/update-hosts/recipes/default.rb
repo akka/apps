@@ -37,7 +37,7 @@ end
 
 bash "chown generated files for akka user" do
   code <<-EOH
-    chown -R akka.akka /home/akka
-    chmod +x *.sh
+    chown -R akka:akka /home/akka
+    chmod +x /home/akka/*.sh
   EOH
 end

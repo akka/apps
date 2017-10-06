@@ -1,0 +1,37 @@
+{
+    "chef_environment": "_default", 
+    "ipaddress-internal": "172.31.0.162", 
+    "ipaddress": "54.171.5.185", 
+    "name": "akka-node-002", 
+    
+    "akka": {
+      "system_name": "BenchmarkSystem",
+      "port": 2551,
+      "roles": ["shard"],
+      
+      "seed_nodes": ["172.31.0.162"],
+      "minumum_nodes": 3
+    },
+    
+    "cassandra": {
+      "contact_points": ["72.31.13.199"]
+    },
+    
+    "authorization": {
+      "sudo": {
+        "users": ["akka", "ubuntu", "ktoso", "patriknw", "chbatey"],
+        "passwordless": "true"
+      }
+    },
+    
+    "java": {
+      "jdk_version": 8,
+      "oracle": {
+        "accept_oracle_download_terms": true
+      },
+      "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
+    },
+    "run_list": [
+       "role[benchmark]"
+    ]
+}

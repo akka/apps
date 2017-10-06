@@ -1,0 +1,1 @@
+default['cassandra']['config']['snitch'] = "GossipingPropertyFileSnitch"

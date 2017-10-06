@@ -1,4 +1,4 @@
-val Akka = "2.5.3"
+val Akka = "2.5.6"
 val AkkaHttp = "10.0.9"
 val AkkaCom = "1.0.3"
 
@@ -34,7 +34,7 @@ lazy val sharding = project.enablePlugins(commonPlugins: _*)
       "com.typesafe.akka"     %% "akka-persistence-cassandra"   % "0.54",
       "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
       "com.lightbend.akka"    %% "akka-management-cluster-http" % "0.3"
-      
+
     )
   )
 
