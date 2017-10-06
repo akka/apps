@@ -7,7 +7,7 @@
 # EXTRA_RUNLIST='"role[benchmark-sharding]",' ./make-node-files-from-gcloud.sh akka-node-00 '["10.132.0.7", "10.132.0.8"]'
 
 
-# -------------------- functions --------------------  
+# -------------------- functions --------------------
 json_append() {
   local old_json=$1; shift
   local count=0
@@ -50,9 +50,9 @@ do
   name=$(echo $node | awk ' { print $1} ')
   internal_ip=$(echo $node | awk ' { print $2} ')
   external_ip=$(echo $node | awk ' { print $3} ')
-  
-  echo 
-  
+
+  echo
+
   cat ./nodes/akka-node.json.template |
     sed "s/NAME/$name/g" |
     sed "s/INTERNAL_IP/$internal_ip/g" |
@@ -60,7 +60,7 @@ do
     sed "s/AKKA_SEED_NODES/$SEED_NODES/g" |
     sed "s/EXTRA_RUNLIST/$EXTRA_RUNLIST/g" |
     sed "s/CASSANDRA_CONTACT_POINTS/$CASSANDRA_CONTACT_POINTS/g" |
-    sed "s/minumum_nodes/$minumum_nodes_NUM/g"  > ./nodes/$name.json 
-    
-    echo "Generated: ./nodes/$name.json" 
+    sed "s/minumum_nodes/$minumum_nodes_NUM/g"  > ./nodes/$name.json
+
+    echo "Generated: ./nodes/$name.json"
 done

@@ -36,12 +36,3 @@ package 'oracle-java8-set-default' do
   action :install
 end
 
-bash 'download open jdk9' do
-  code <<-EOH
-  cd /usr/lib/jvm
-  rm -rf jdk-9
-  wget http://download.java.net/java/jdk9/archive/181/binaries/jdk-9+181_linux-x64_bin.tar.gz
-  tar xzvf jdk-9+181_linux-x64_bin.tar.gz
-  rm jdk-9+181_linux-x64_bin.tar.gz
-  EOH
-end

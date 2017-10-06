@@ -1,0 +1,13 @@
+{
+  "name": "akka-re",
+  "description": "",
+  "json_class": "Chef::Role",
+
+  "default_attributes": {
+
+  },
+
+  "run_list": [
+    "recipe[akka-multi-dc]"
+  ]
+}

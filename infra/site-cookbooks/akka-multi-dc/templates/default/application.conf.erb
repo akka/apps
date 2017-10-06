@@ -1,0 +1,98 @@
+# ------------------------ WARNING -------------------------------- 
+#      This file is generated automatically via Chef scripts. 
+#      Do not edit manually - all your changes WILL be lost.
+# ------------------------ WARNING -------------------------------- 
+akka {
+
+  actor.provider = cluster
+
+  remote {
+    netty.tcp {
+      # going across DCs so need the external IP
+      hostname = "<%= node['ipaddress-external'] %>"
+      port = <%= node['akka']['port'] %>
+      bind-hostname = "0.0.0.0"
+    }
+    
+    artery {
+      # enabled = on this is up to the app to decide
+      canonical.hostname = "<%= node['ipaddress-external'] %>"
+      canonical.port = <%= node['akka']['port'] %>
+
+      bind {
+        port = <%= node['akka']['port'] %>
+        hostname = "0.0.0.0"
+      }
+    }
+  } 
+
+  cluster {
+
+    min-nr-of-members = <%= node['akka']['min_nodes'] %>
+
+    roles = [
+      <%= (node['akka']['roles'].map do |role|
+        "\"#{role}\"" 
+      end).join(",\n      ") %>
+    ]
+
+    seed-nodes = [
+      <%= (node['akka']['seed_nodes'].map do |seed|
+         "\"akka://#{node['akka']['system_name']}@#{seed}:#{node['akka']['port']}\""
+      end).join(",\n      ") %>
+    ]
+
+    http.management {
+      hostname = "0.0.0.0"
+      port = 19999
+    }
+
+    multi-data-center {
+      self-data-center = "<%= node['akka']['dc'] %>"
+    }
+  }
+
+  persistence {
+    snapshot-store.plugin = "cassandra-snapshot-store"
+
+    multi-data-center {
+      all-data-centers = ["eu-central", "eu-west"]
+    }
+  }
+
+}
+
+cassandra-journal-multi-dc {
+  contact-points = [
+    <%= (node['cassandra']['contact_points'].map do |node|
+       "\"#{node}\""
+    end).join(",\n    ") %>
+  ]
+  local-datacenter = "<%= node['akka']['dc'] %>"
+  log-queries = on
+}
+
+cassandra-query-journal-multi-dc {
+ contact-points = [
+    <%= (node['cassandra']['contact_points'].map do |node|
+       "\"#{node}\""
+    end).join(",\n    ") %>
+  ]
+  local-datacenter = "<%= node['akka']['dc'] %>"
+  log-queries = on
+}
+
+cassandra-snapshot-store {
+  # FQCN of the cassandra snapshot store plugin
+  class = "akka.persistence.cassandra.snapshot.CassandraSnapshotStore"
+
+  contact-points = [
+    <%= (node['cassandra']['contact_points'].map do |node|
+       "\"#{node}\""
+    end).join(",\n    ") %>
+  ]
+
+  local-datacenter = "<%= node['akka']['dc'] %>"
+  log-queries = on
+}
+

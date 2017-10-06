@@ -152,17 +152,6 @@ permissions_validity_in_ms: 2000
 # Defaults to the same value as permissions_validity_in_ms.
 # permissions_update_interval_in_ms: 2000
 
-# Validity period for credentials cache. This cache is tightly coupled to
-# the provided PasswordAuthenticator implementation of IAuthenticator. If
-# another IAuthenticator implementation is configured, this cache will not
-# be automatically used and so the following settings will have no effect.
-# Please note, credentials are cached in their encrypted form, so while
-# activating this cache may reduce the number of queries made to the
-# underlying table, it may not  bring a significant reduction in the
-# latency of individual authentication attempts.
-# Defaults to 2000, set to 0 to disable credentials caching.
-credentials_validity_in_ms: 2000
-
 # Refresh interval for credentials cache (if enabled).
 # After this interval, cache entries become eligible for refresh. Upon next
 # access, an async reload is scheduled and the old value returned until it
@@ -194,11 +183,6 @@ data_file_directories:
 # separate spindle than the data directories.
 # If not set, the default directory is $CASSANDRA_HOME/data/commitlog.
 commitlog_directory: /var/lib/cassandra/commitlog
-
-# Enable / disable CDC functionality on a per-node basis. This modifies the logic used
-# for write path allocation rejection (standard: never reject. cdc: reject Mutation
-# containing a CDC-enabled table if at space limit in cdc_raw_directory).
-cdc_enabled: false
 
 # CommitLogSegments are moved to this directory on flush if cdc_enabled: true and the
 # segment contains mutations for a CDC-enabled table. This should be placed on a
@@ -245,34 +229,6 @@ disk_failure_policy: stop
 # ignore
 #   ignore fatal errors and let the batches fail
 commit_failure_policy: stop
-
-# Maximum size of the native protocol prepared statement cache
-#
-# Valid values are either "auto" (omitting the value) or a value greater 0.
-#
-# Note that specifying a too large value will result in long running GCs and possbily
-# out-of-memory errors. Keep the value at a small fraction of the heap.
-#
-# If you constantly see "prepared statements discarded in the last minute because
-# cache limit reached" messages, the first step is to investigate the root cause
-# of these messages and check whether prepared statements are used correctly -
-# i.e. use bind markers for variable parts.
-#
-# Do only change the default value, if you really have more prepared statements than
-# fit in the cache. In most cases it is not neccessary to change this value.
-# Constantly re-preparing statements is a performance penalty.
-#
-# Default value ("auto") is 1/256th of the heap or 10MB, whichever is greater
-prepared_statements_cache_size_mb:
-
-# Maximum size of the Thrift prepared statement cache
-#
-# If you do not use Thrift at all, it is safe to leave this value at "auto".
-#
-# See description of 'prepared_statements_cache_size_mb' above for more information.
-#
-# Default value ("auto") is 1/256th of the heap or 10MB, whichever is greater
-thrift_prepared_statements_cache_size_mb:
 
 # Maximum size of the key cache in memory.
 #
@@ -772,27 +728,6 @@ snapshot_before_compaction: false
 # lose data on truncation or drop.
 auto_snapshot: true
 
-# Granularity of the collation index of rows within a partition.
-# Increase if your rows are large, or if you have a very large
-# number of rows per partition.  The competing goals are these:
-#
-# - a smaller granularity means more index entries are generated
-#   and looking up rows withing the partition by collation column
-#   is faster
-# - but, Cassandra will keep the collation index in memory for hot
-#   rows (as part of the key cache), so a larger granularity means
-#   you can cache more hot rows
-column_index_size_in_kb: 64
-
-# Per sstable indexed key cache entries (the collation index in memory
-# mentioned above) exceeding this size will not be held on heap.
-# This means that only partition information is held on heap and the
-# index entries are read from disk.
-#
-# Note that this size refers to the size of the
-# serialized index information and not the size of the partition.
-column_index_cache_size_in_kb: 2
-
 # Number of simultaneous compactions to allow, NOT including
 # validation "compactions" for anti-entropy repair.  Simultaneous
 # compactions can help preserve read performance in a mixed read/write
@@ -854,11 +789,6 @@ cas_contention_timeout_in_ms: 1000
 truncate_request_timeout_in_ms: 60000
 # The default timeout for other, miscellaneous operations
 request_timeout_in_ms: 10000
-
-# How long before a node logs slow queries. Select queries that take longer than
-# this timeout to execute, will generate an aggregated log message, so that slow queries
-# can be identified. Set this value to zero to disable slow query logging.
-slow_query_log_timeout_in_ms: 500
 
 # Enable operation timeout information exchange between nodes to accurately
 # measure request timeouts.  If disabled, replicas will assume that requests
@@ -945,7 +875,9 @@ cross_node_timeout: false
 #
 # You can use a custom Snitch by setting this to the full class name
 # of the snitch, which will be assumed to be on your classpath.
-endpoint_snitch: GossipingPropertyFileSnitch
+endpoint_snitch: '<%= node['cassandra']['config']['snitch'] %>'
+
+
 
 # controls how often to perform the more expensive part of host score
 # calculation
@@ -1106,33 +1038,6 @@ enable_scripted_user_defined_functions: false
 windows_timer_interval: 1
 
 
-# Enables encrypting data at-rest (on disk). Different key providers can be plugged in, but the default reads from
-# a JCE-style keystore. A single keystore can hold multiple keys, but the one referenced by
-# the "key_alias" is the only key that will be used for encrypt opertaions; previously used keys
-# can still (and should!) be in the keystore and will be used on decrypt operations
-# (to handle the case of key rotation).
-#
-# It is strongly recommended to download and install Java Cryptography Extension (JCE)
-# Unlimited Strength Jurisdiction Policy Files for your version of the JDK.
-# (current link: http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html)
-#
-# Currently, only the following file types are supported for transparent data encryption, although
-# more are coming in future cassandra releases: commitlog, hints
-transparent_data_encryption_options:
-    enabled: false
-    chunk_length_kb: 64
-    cipher: AES/CBC/PKCS5Padding
-    key_alias: testing:1
-    # CBC IV length for AES needs to be 16 bytes (which is also the default size)
-    # iv_length: 16
-    key_provider:
-      - class_name: org.apache.cassandra.security.JKSKeyProvider
-        parameters:
-          - keystore: conf/.keystore
-            keystore_password: cassandra
-            store_type: JCEKS
-            key_password: cassandra
-
 
 #####################
 # SAFETY THRESHOLDS #
@@ -1172,27 +1077,5 @@ gc_warn_threshold_in_ms: 1000
 # early. Any value size larger than this threshold will result into marking an SSTable
 # as corrupted.
 # max_value_size_in_mb: 256
-
-# Back-pressure settings #
-# If enabled, the coordinator will apply the back-pressure strategy specified below to each mutation
-# sent to replicas, with the aim of reducing pressure on overloaded replicas.
-back_pressure_enabled: false
-# The back-pressure strategy applied.
-# The default implementation, RateBasedBackPressure, takes three arguments:
-# high ratio, factor, and flow type, and uses the ratio between incoming mutation responses and outgoing mutation requests.
-# If below high ratio, outgoing mutations are rate limited according to the incoming rate decreased by the given factor;
-# if above high ratio, the rate limiting is increased by the given factor;
-# such factor is usually best configured between 1 and 10, use larger values for a faster recovery
-# at the expense of potentially more dropped mutations;
-# the rate limiting is applied according to the flow type: if FAST, it's rate limited at the speed of the fastest replica,
-# if SLOW at the speed of the slowest one.
-# New strategies can be added. Implementors need to implement org.apache.cassandra.net.BackpressureStrategy and
-# provide a public constructor accepting a Map<String, Object>.
-back_pressure_strategy:
-    - class_name: org.apache.cassandra.net.RateBasedBackPressure
-      parameters:
-        - high_ratio: 0.90
-          factor: 5
-          flow: FAST
 
 auto_bootstrap: false

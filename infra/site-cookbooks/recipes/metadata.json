@@ -1,7 +1,7 @@
 {
-  "name": "sbt_credentials",
-  "description": "Installs/Configures sbt_credentials",
-  "long_description": "sbt_credentials\n===============\n",
+  "name": "recipes",
+  "description": "...",
+  "long_description": "",
   "maintainer": "YOUR_COMPANY_NAME",
   "maintainer_email": "YOUR_EMAIL",
   "license": "All rights reserved",

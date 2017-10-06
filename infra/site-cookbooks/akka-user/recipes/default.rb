@@ -15,6 +15,13 @@ user "akka" do
   manage_home true
 end
 
+directory '/home/akka/.ssh' do
+  owner 'akka'
+  group 'akka'
+  mode '0700'
+  action :create
+end
+
 # set up mutual (naive, same key) trust between benchmark nodes
 bash "trust akka's public key" do
   code <<-EOH
