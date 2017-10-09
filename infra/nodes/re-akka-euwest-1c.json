@@ -8,8 +8,8 @@
       "system_name": "MultiDcSystem",
       "port": 2551,
       "roles": [],
-      "seed_nodes": ["172.31.0.162"],
-      "minumum_nodes": 2,
+      "seed_nodes": ["54.171.5.185"],
+      "min_nodes": 2,
       "dc": "eu-west"
     },
 

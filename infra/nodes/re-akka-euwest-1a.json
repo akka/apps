@@ -1,16 +1,16 @@
 {
     "chef_environment": "_default", 
-    "ipaddress-internal": "172.31.35.187",
-    "ipaddress": "54.246.158.33",
-    "name": "re-akka-eucentral-1b",
+    "ipaddress-internal": "172.31.24.65",
+    "ipaddress": "34.253.212.110",
+    "name": "re-akka-euwest-1a",
     
     "akka": {
       "system_name": "MultiDcSystem",
       "port": 2551,
       "roles": [],
-      "seed_nodes": ["172.31.0.162"],
-      "minumum_nodes": 2,
-      "dc": "eucentral"
+      "seed_nodes": ["54.171.5.185"],
+      "min_nodes": 2,
+      "dc": "eu-west"
     },
 
     "authorization": {

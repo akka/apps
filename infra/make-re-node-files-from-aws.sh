@@ -9,7 +9,7 @@ aws_args="--region=$region"
 
 cassandra_instances=$(aws ${aws_args} ec2 describe-instances --filters Name=tag:Purpose,Values=re --filter Name=tag:Role,Values=re-cassandra  --query 'Reservations[].Instances[].[PrivateIpAddress,PublicIpAddress,Tags[?Key==`Name`].Value[],Tags[?Key==`Role`].Value[]]' --output text   | xargs -n3 -d '\n')
 
-akka_instances=$(aws ${aws_args} ec2 describe-instances --filters Name=tag:Purpose,Values=re --filter Name=tag:Role,Values=akka-re  --query 'Reservations[].Instances[].[PrivateIpAddress,PublicIpAddress,Tags[?Key==`Name`].Value[],Tags[?Key==`Role`].Value[]]' --output text   | xargs -n3 -d '\n' | grep -v None)
+akka_instances=$(aws ${aws_args} ec2 describe-instances --filters Name=tag:Purpose,Values=re --filter Name=tag:Role,Values=re-akka  --query 'Reservations[].Instances[].[PrivateIpAddress,PublicIpAddress,Tags[?Key==`Name`].Value[],Tags[?Key==`Role`].Value[]]' --output text   | xargs -n3 -d '\n' | grep -v None)
 
 
 echo "Cassandra instances"
@@ -23,6 +23,13 @@ cassandra_seeds=$(aws ${aws_args} ec2 describe-instances --filters Name=tag:Purp
 read -r -a cassandra_seeds_arr <<< "$cassandra_seeds"
 cassandra_seed="${cassandra_seeds_arr[0]}"
 echo "Setting Cassandra seed to: $cassandra_seed"
+
+akka_seeds=$(aws ${aws_args} ec2 describe-instances --filters Name=tag:Purpose,Values=re --filter Name=tag:Role,Values=re-akka  --query 'Reservations[].Instances[].[PublicIpAddress]' --output text)
+
+read -r -a akka_seeds_arr <<< "$akka_seeds"
+akka_seed="${akka_seeds_arr[0]}"
+echo "Setting Akka seed to: $akka_seed"
+
 
 echo "Generating files"
 while read -r node; do
@@ -40,11 +47,12 @@ while read -r node; do
 
   echo "Generating file: ./node/$name.json"
 
-  cat ./nodes/re-cassandra-template.json |
-    sed "s/NAME/$name/g" |
+  cat ./nodes/re-cassandra.json.template |
+    sed "s/NAME/$name/g"               |
     sed "s/INTERNAL_IP/$internal_ip/g" |
     sed "s/EXTERNAL_IP/$external_ip/g" |
-    sed "s/DC/$dc/g" |
+    sed "s/DC/$dc/g"                   |
+    sed "s/AKKA_SEED_IP/$akka_seed/g"  |
     sed "s/CASSANDRA_SEED_IP/$cassandra_seed/g" > ./nodes/${name}.json.test
 
   echo "Generated: ./nodes/$name.json"
@@ -66,16 +74,18 @@ while read -r node; do
 
   echo "Generating file: ./nodes/$name.json"
 
-  cat ./nodes/re-akka-template.json |
-    sed "s/NAME/$name/g" |
+  cat ./nodes/re-akka.json.template |
+    sed "s/NAME/$name/g"               |
     sed "s/INTERNAL_IP/$internal_ip/g" |
     sed "s/EXTERNAL_IP/$external_ip/g" |
-    sed "s/DC/$dc/g" |
+    sed "s/DC/$dc/g"                   |
+    sed "s/AKKA_SEED_IP/$akka_seed/g"  |
     sed "s/CASSANDRA_SEED_IP/$cassandra_seed/g" > ./nodes/${name}.json
 
   echo "Generated: ./nodes/$name.json"
 
 done <<< "$akka_instances"
+
 
 echo "Put the following in your /etc/hosts"
 
@@ -95,6 +105,7 @@ while read -r node; do
   name=${array[2]}
   echo "${external_ip} ${name}"
 done <<< "$akka_instances"
+
 
 
 

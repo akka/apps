@@ -11,6 +11,7 @@ akka {
       # going across DCs so need the external IP
       hostname = "<%= node['ipaddress'] %>"
       port = <%= node['akka']['port'] %>
+      bind-hostname = "0.0.0.0"
     }
     
     artery {
@@ -22,8 +23,7 @@ akka {
 
   cluster {
 
-    # total number of nodes this benchmark will run on (same as number of nodes in multi-node-test.hosts)
-    minimum-nodes = <%= node['akka']['minumum_nodes'] %>
+    min-nr-of-members = <%= node['akka']['min_nodes'] %>
 
     roles = [
       <%= (node['akka']['roles'].map do |role|
@@ -33,7 +33,7 @@ akka {
 
     seed-nodes = [
       <%= (node['akka']['seed_nodes'].map do |seed|
-         "\"akka://#{node['akka']['system_name']}@#{seed}:#{node['akka']['port']}\""
+         "\"akka.tcp://#{node['akka']['system_name']}@#{seed}:#{node['akka']['port']}\""
       end).join(",\n      ") %>
     ]
 

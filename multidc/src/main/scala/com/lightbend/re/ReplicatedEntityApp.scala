@@ -20,6 +20,7 @@ import java.io.File
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.cluster.Cluster
+import akka.cluster.http.management.ClusterHttpManagement
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
 import akka.persistence.multidc.PersistenceMultiDcSettings
 import com.lightbend.re.ReplicatedCounter.{Increment, ShardingEnvelope}
@@ -36,6 +37,9 @@ object ReplicatedEntityApp extends App {
   println(s"Cloud configuration: ${rootConfFile.exists}")
 
   implicit val system = ActorSystem("MultiDcSystem", conf)
+
+  val cluster = Cluster.system)
+  ClusterHttpManagement(cluster).start()
 
   ClusterSharding(system).start(
     typeName = ReplicatedCounter.ShardingTypeName,

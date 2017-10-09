@@ -1,16 +1,16 @@
 {
     "chef_environment": "_default", 
-    "ipaddress-internal": "INTERNAL_IP",
-    "ipaddress": "EXTERNAL_IP",
-    "name": "NAME",
+    "ipaddress-internal": "",
+    "ipaddress": "",
+    "name": "",
     
     "akka": {
       "system_name": "MultiDcSystem",
       "port": 2551,
       "roles": [],
       "seed_nodes": ["172.31.0.162"],
-      "minumum_nodes": 2,
-      "dc": "DC"
+      "min_nodes": 2,
+      "dc": "eu-central"
     },
 
     "authorization": {
