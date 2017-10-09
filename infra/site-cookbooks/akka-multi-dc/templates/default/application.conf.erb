@@ -6,8 +6,6 @@ akka {
 
   actor.provider = cluster
 
-  system-name = "<%= node['akka']['system_name'] %>"
-
   remote {
     netty.tcp {
       # going across DCs so need the external IP
@@ -61,6 +59,8 @@ cassandra-journal-multi-dc {
        "\"#{node}\""
     end).join(",\n    ") %>
   ]
+
+  local-datacenter = "<%= node['akka']['dc'] %>"
 }
 
 cassandra-query-journal-multi-dc {
@@ -71,4 +71,15 @@ cassandra-query-journal-multi-dc {
   ]
 }
 
+cassandra-snapshot-store {
+  # FQCN of the cassandra snapshot store plugin
+  class = "akka.persistence.cassandra.snapshot.CassandraSnapshotStore"
+
+  contact-points = [
+    <%= (node['cassandra']['contact_points'].map do |node|
+       "\"#{node}\""
+    end).join(",\n    ") %>
+  ]
+
+}
 

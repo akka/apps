@@ -1,6 +1,10 @@
 val Akka = "2.5.6"
 val AkkaHttp = "10.0.9"
 val AkkaCom = "1.1-M3+9-b90ac06d"
+val AkkaClusterManagement = "0.3"
+val AkkaPersistenceCassandra = "0.56"
+val KryoVersion = "0.5.1"
+val HdrHistogramVersion = "2.1.9"
 
 lazy val `apps-root` = project
   .in(file("."))
@@ -17,10 +21,10 @@ lazy val ddata = project.enablePlugins(commonPlugins: _*)
       "com.typesafe.akka"     %% "akka-persistence"             % Akka,
       "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,
       "com.lightbend.akka"    %% "akka-diagnostics"             % AkkaCom,
-      "org.hdrhistogram"       % "HdrHistogram"                 % "2.1.9",
-      "com.typesafe.akka"     %% "akka-persistence-cassandra"   % "0.54",
-      "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
-      "com.lightbend.akka"    %% "akka-management-cluster-http" % "0.3",
+      "org.hdrhistogram"       % "HdrHistogram"                 % HdrHistogramVersion,
+      "com.typesafe.akka"     %% "akka-persistence-cassandra"   % AkkaPersistenceCassandra,
+      "com.github.romix.akka" %% "akka-kryo-serialization"      % KryoVersion,
+      "com.lightbend.akka"    %% "akka-management-cluster-http" % AkkaClusterManagement,
       "com.typesafe.akka"     %% "akka-http"                    % AkkaHttp
     )
   )
@@ -30,10 +34,10 @@ lazy val sharding = project.enablePlugins(commonPlugins: _*)
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
       "com.typesafe.akka"     %% "akka-persistence"             % Akka,
-      "org.hdrhistogram"       % "HdrHistogram"                 % "2.1.9",
-      "com.typesafe.akka"     %% "akka-persistence-cassandra"   % "0.54",
+      "org.hdrhistogram"       % "HdrHistogram"                 % HdrHistogramVersion,
+      "com.typesafe.akka"     %% "akka-persistence-cassandra"   % AkkaPersistenceCassandra,
       "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
-      "com.lightbend.akka"    %% "akka-management-cluster-http" % "0.3"
+      "com.lightbend.akka"    %% "akka-management-cluster-http" % AkkaClusterManagement
 
     )
   )
@@ -46,15 +50,16 @@ lazy val pubsub = project
       "com.typesafe.akka"     %% "akka-distributed-data"        % Akka,
       "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,
       "com.lightbend.akka"    %% "akka-diagnostics"             % AkkaCom,
-      "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
-      "org.hdrhistogram"       % "HdrHistogram"                 % "2.1.9",
-      "com.lightbend.akka"    %% "akka-management-cluster-http" % "0.3",
+      "com.github.romix.akka" %% "akka-kryo-serialization"      % KryoVersion,
+      "org.hdrhistogram"       % "HdrHistogram"                 % HdrHistogramVersion,
+      "com.lightbend.akka"    %% "akka-management-cluster-http" % AkkaClusterManagement,
       "com.typesafe.akka"     %% "akka-http"                    % AkkaHttp,
       "com.typesafe.akka"     %% "akka-http-spray-json"         % AkkaHttp
     )
   )
 
-lazy val replicatedEntity = project
+
+lazy val multidc = project
   .enablePlugins(commonPlugins: _*)
   .settings(
     libraryDependencies ++= Seq(
@@ -63,18 +68,19 @@ lazy val replicatedEntity = project
       "com.typesafe.akka"     %% "akka-distributed-data"        % Akka,
       "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,
       "com.lightbend.akka"    %% "akka-diagnostics"             % AkkaCom,
-      "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
-      "org.hdrhistogram"       % "HdrHistogram"                 % "2.1.9",
-      "com.lightbend.akka"    %% "akka-management-cluster-http" % "0.3",
+      "com.github.romix.akka" %% "akka-kryo-serialization"      % KryoVersion,
+      "org.hdrhistogram"       % "HdrHistogram"                 % HdrHistogramVersion,
+      "com.lightbend.akka"    %% "akka-management-cluster-http" % AkkaClusterManagement,
       "com.typesafe.akka"     %% "akka-http"                    % AkkaHttp,
-      "com.typesafe.akka"     %% "akka-http-spray-json"         % AkkaHttp
+      "com.typesafe.akka"     %% "akka-http-spray-json"         % AkkaHttp,
+      "ch.qos.logback"         % "logback-classic"              % "1.2.3"
     )
   )
-
 
 inThisBuild(Seq(
   scalaVersion := "2.12.3",
   //scalafmtVersion := "1.0.0-RC2",
+  test in assembly := {},
 
   // headers
   organizationName := "Lightbend Inc.",

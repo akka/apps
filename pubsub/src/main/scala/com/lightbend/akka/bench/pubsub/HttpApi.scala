@@ -28,9 +28,10 @@ import akka.util.Timeout
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+
 object HttpApi {
 
-  def startServer(host: String, port: Int, coordinator: ActorRef)(implicit system: ActorSystem) = {
+  def startServer(host: String, port: Int, coordinator: ActorRef)(implicit system: ActorSystem): Unit = {
 
     implicit val mat = ActorMaterializer()
     import system.dispatcher

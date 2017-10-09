@@ -1,84 +1,74 @@
+/*
+ * Copyright 2017 Lightbend Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.lightbend.re
 
-import akka.actor.{ActorRef, ActorSystem, Props, ReceiveTimeout}
-import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings, ShardRegion}
-import akka.persistence.PersistentActor
-import NormalExample._
-import akka.pattern.ask
+import java.io.File
 
-import scala.concurrent.Future
-import scala.concurrent.duration._
+import akka.actor.{ActorRef, ActorSystem}
+import akka.cluster.Cluster
+import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
+import akka.persistence.multidc.PersistenceMultiDcSettings
+import com.lightbend.re.ReplicatedCounter.{Increment, ShardingEnvelope}
+import com.typesafe.config.ConfigFactory
+
 import scala.io.StdIn
 
 object ReplicatedEntityApp extends App {
+  val rootConfFile = new File("/home/akka/multidc/application.conf")
+  val rootConf =
+    if (rootConfFile.exists) ConfigFactory.parseFile(rootConfFile)
+    else ConfigFactory.empty("no-root-application-conf-found")
+  val conf = rootConf.withFallback(ConfigFactory.load())
+  println(s"Cloud configuration: ${rootConfFile.exists}")
 
-  println("Lets do some sharding")
-  val system = ActorSystem()
-  import system.dispatcher
+  implicit val system = ActorSystem("MultiDcSystem", conf)
 
-  val counterRegion: ActorRef = ClusterSharding(system).start(
-    typeName = "Counter",
-    entityProps = Props[Counter],
+  ClusterSharding(system).start(
+    typeName = ReplicatedCounter.ShardingTypeName,
+    entityProps = ReplicatedCounter.shardingProps(PersistenceMultiDcSettings(system)),
     settings = ClusterShardingSettings(system),
-    extractEntityId = extractEntityId,
-    extractShardId = extractShardId)
+    extractEntityId = ReplicatedCounter.extractEntityId,
+    extractShardId = ReplicatedCounter.extractShardId)
 
-  val count: Future[Int] = (counterRegion ? Get(1)).mapTo[Int]
+  val counterProxy: ActorRef = ClusterSharding(system).startProxy(
+    typeName = ReplicatedCounter.ShardingTypeName,
+    role = None,
+    dataCenter = Some("eu-west"),
+    extractEntityId = ReplicatedCounter.extractEntityId,
+    extractShardId = ReplicatedCounter.extractShardId)
 
-  count.onComplete(println)
+  HttpApi.startServer("localhost", 8080, counterProxy)
+
+  if (Cluster(system).selfRoles("client")) {
+    Thread.sleep(2000)
+    val nrEntities = 1000
+    val nrIncrements = 1000000
+    println(s"Sending load")
+    (1 to nrEntities).foreach { i =>
+      val entityId = i.toString
+      (1 to nrIncrements).foreach { _ =>
+        counterProxy ! ShardingEnvelope(entityId, Increment("up you go"))
+        Thread.sleep(50)
+      }
+    }
+  }
+
 
   StdIn.readLine()
   system.terminate()
 }
 
-object NormalExample {
-  case object Increment
-  case object Decrement
-  final case class Get(counterId: Long)
-  final case class EntityEnvelope(id: Long, payload: Any)
-
-  case object Stop
-  final case class CounterChanged(delta: Int)
-
-  class Counter extends PersistentActor {
-
-    import akka.cluster.sharding.ShardRegion.Passivate
-
-    context.setReceiveTimeout(120.seconds)
-
-    // self.path.name is the entity identifier (utf-8 URL-encoded)
-    override def persistenceId: String = "Counter-" + self.path.name
-
-    var count = 0
-
-    def updateState(event: CounterChanged): Unit =
-      count += event.delta
-
-    override def receiveRecover: Receive = {
-      case evt: CounterChanged ⇒ updateState(evt)
-    }
-
-    override def receiveCommand: Receive = {
-      case Increment ⇒ persist(CounterChanged(+1))(updateState)
-      case Decrement ⇒ persist(CounterChanged(-1))(updateState)
-      case Get(_) ⇒ sender() ! count
-      case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = Stop)
-      case Stop ⇒ context.stop(self)
-    }
-  }
-
-  val extractEntityId: ShardRegion.ExtractEntityId = {
-    case EntityEnvelope(id, payload) ⇒ (id.toString, payload)
-    case msg@Get(id) ⇒ (id.toString, msg)
-  }
-
-  val numberOfShards = 100
-
-  val extractShardId: ShardRegion.ExtractShardId = {
-    case EntityEnvelope(id, _) ⇒ (id % numberOfShards).toString
-    case Get(id) ⇒ (id % numberOfShards).toString
-    case ShardRegion.StartEntity(id) ⇒
-      // StartEntity is used by remembering entities feature
-      (id.toLong % numberOfShards).toString
-  }
-}

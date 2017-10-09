@@ -14,56 +14,48 @@
  * limitations under the License.
  */
 
-package com.lightbend.akka.bench.ddata
+package com.lightbend.re
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.cluster.Cluster
-import akka.cluster.ddata.Replicator._
 import akka.cluster.http.management.ClusterHttpManagementRoutes
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
-import akka.stream.scaladsl.Source
-import akka.stream.{ActorMaterializer, OverflowStrategy}
-import akka.util.{ByteString, Timeout}
+import akka.http.scaladsl.model.StatusCodes
+import akka.pattern.ask
+import akka.stream.ActorMaterializer
+import akka.util.Timeout
+import com.lightbend.re.ReplicatedCounter.{Get, Increment, ShardingEnvelope}
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 object HttpApi {
 
-  def startServer(httpHost: String, httpPort: Int)(implicit system: ActorSystem) = {
+  def startServer(httpHost: String, httpPort: Int, counterProxy: ActorRef)(implicit system: ActorSystem) = {
 
     import akka.http.scaladsl.server.Directives._
 
     implicit val mat = ActorMaterializer()
     import system.dispatcher
-
-    val coordinator = system.actorOf(
-      DDataBenchmarkCoordinator.singletonProxyProps(system),
-      name = "coordinatorProxy")
+    implicit val timeout: Timeout = Timeout(10.seconds)
 
     val api =
       concat(
-        path("bench") {
+        path("counter") {
           get {
-            parameters("nodes".as[Int], "rounds".as[Int], "consistency".as[String], "writeTimeoutSecs".as[Int] ? 2) {
-              (nodes, rounds, consistencyText, writeTimeout) =>
-                implicit val timeout: Timeout = 10.seconds
-                val consistency: WriteConsistency = consistencyText match {
-                  case "local" => WriteLocal
-                  case "majority" => WriteMajority(writeTimeout.seconds)
-                  case "all" => WriteAll(writeTimeout.seconds)
-                  case numNodes if numNodes.matches("\\d+") => WriteTo(numNodes.toInt, writeTimeout.seconds)
+            parameters("id".as[String]) {
+              (id: String) =>
+                onComplete((counterProxy ? ShardingEnvelope(id, Get)).mapTo[Int]) {
+                  case Success(i) => complete(i.toString)
+                  case Failure(ex) => complete(StatusCodes.BadRequest, ex.toString)
                 }
-
-                val source: Source[ByteString, Unit] =
-                  Source.actorRef[DDataBenchmarkCoordinator.PartialOutput](100, OverflowStrategy.fail)
-                    .mapMaterializedValue(outActor =>
-                      coordinator ! DDataBenchmarkCoordinator.TriggerTest(nodes, rounds, consistency, outActor))
-                    .map(partialOut => ByteString(partialOut.text + "\n"))
-
-                // stream that output back
-                complete(StatusCodes.OK, HttpEntity(ContentTypes.`text/plain(UTF-8)`, source))
+            }
+          } ~ put {
+            parameters("id".as[String]) {
+              (id: String) =>  {
+                counterProxy ! ShardingEnvelope(id, Increment("http request"))
+                complete(StatusCodes.OK)
+              }
             }
           }
         },
