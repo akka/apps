@@ -1,34 +1,40 @@
 {
-    "chef_environment": "_default", 
-    "ipaddress-internal": "172.31.24.65",
-    "ipaddress": "34.253.212.110",
-    "name": "re-akka-euwest-1a",
-    
     "akka": {
-      "system_name": "MultiDcSystem",
-      "port": 2551,
-      "roles": [],
-      "seed_nodes": ["54.171.5.185"],
-      "min_nodes": 2,
-      "dc": "eu-west"
-    },
-
+        "dc": "eu-west", 
+        "min_nodes": 2, 
+        "port": 2551, 
+        "roles": [], 
+        "seed_nodes": [
+            "34.253.235.234"
+        ], 
+        "system_name": "MultiDcSystem"
+    }, 
     "authorization": {
-      "sudo": {
-        "users": ["akka", "ubuntu", "ktoso", "patriknw", "chbatey"],
-        "passwordless": "true"
-      }
-    },
-    
+        "sudo": {
+            "passwordless": "true", 
+            "users": [
+                "akka", 
+                "ubuntu", 
+                "ktoso", 
+                "patriknw", 
+                "chbatey"
+            ]
+        }
+    }, 
+    "chef_environment": "_default", 
+    "ipaddress": "172.31.24.65", 
+    "ipaddress-external": "54.246.142.193", 
+    "ipaddress-internal": "172.31.24.65", 
     "java": {
-      "jdk_version": 8,
-      "oracle": {
-        "accept_oracle_download_terms": true
-      },
-      "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
-    },
+        "jdk_version": 8, 
+        "oracle": {
+            "accept_oracle_download_terms": true
+        }, 
+        "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
+    }, 
+    "name": "re-akka-euwest-1a", 
     "run_list": [
-       "role[benchmark]",
-       "role[akka-re]"
+        "role[benchmark]", 
+        "role[akka-re]"
     ]
 }

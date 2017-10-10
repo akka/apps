@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package com.lightbend.re
+package com.lightbend.multidc
 
 import java.io.File
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.cluster.Cluster
 import akka.cluster.http.management.ClusterHttpManagement
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
 import akka.persistence.multidc.PersistenceMultiDcSettings
-import com.lightbend.re.ReplicatedCounter.{Increment, ShardingEnvelope}
+import com.lightbend.multidc.ReplicatedCounter.{Increment, ShardingEnvelope}
 import com.typesafe.config.ConfigFactory
 
 import scala.io.StdIn
@@ -36,7 +36,9 @@ object ReplicatedEntityApp extends App {
   val conf = rootConf.withFallback(ConfigFactory.load())
   println(s"Cloud configuration: ${rootConfFile.exists}")
 
-  implicit val system = ActorSystem("MultiDcSystem", conf)
+  implicit val system: ActorSystem = ActorSystem("MultiDcSystem", conf)
+
+  system.actorOf(Props[MemberWatcher])
 
   val cluster = Cluster(system)
   ClusterHttpManagement(cluster).start()
@@ -57,7 +59,7 @@ object ReplicatedEntityApp extends App {
 
   HttpApi.startServer("localhost", 8080, counterProxy)
 
-  if (Cluster(system).selfRoles("client")) {
+  if (Cluster(system).selfRoles("load-generator")) {
     Thread.sleep(2000)
     val nrEntities = 1000
     val nrIncrements = 1000000
@@ -70,7 +72,6 @@ object ReplicatedEntityApp extends App {
       }
     }
   }
-
 
   StdIn.readLine()
   system.terminate()

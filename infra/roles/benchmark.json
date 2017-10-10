@@ -7,6 +7,7 @@
   },
 
   "run_list": [
-    "recipe[update-hosts]"
+    "recipe[update-hosts]",
+    "recipe[clone-akka-repos]"
   ]
 }

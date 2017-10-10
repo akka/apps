@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.lightbend.re
+package com.lightbend.multidc
 
 import akka.persistence.multidc.scaladsl._
 
@@ -31,6 +31,8 @@ object ReplicatedCounter {
 
   sealed trait Event
   final case class Incremented(delta: Int, note: String) extends Event
+
+  case object IncrementAck
 
   def props(settings: PersistenceMultiDcSettings): Props =
     ReplicatedEntity.props("", Some("counter"), () => new ReplicatedCounter, settings)
@@ -50,12 +52,14 @@ object ReplicatedCounter {
   def shardId(entityId: String): String = (math.abs(entityId.hashCode) % MaxShards).toString
   val extractShardId: ShardRegion.ExtractShardId = {
     case ShardingEnvelope(entityId, cmd) => shardId(entityId)
-    case StartEntity(entityId)           => shardId(entityId)
+    case StartEntity(entityId) => shardId(entityId)
   }
+
 
 }
 
 class ReplicatedCounter extends ReplicatedEntity[ReplicatedCounter.Command, ReplicatedCounter.Event, Counter] {
+
   import ReplicatedCounter._
 
   override def initialState: Counter = Counter.empty
@@ -67,7 +71,9 @@ class ReplicatedCounter extends ReplicatedEntity[ReplicatedCounter.Command, Repl
   override def actions: Actions = {
     Actions {
       case (Increment(note), state, ctx) =>
-        ctx.thenPersist(Incremented(1, note))
+        ctx.thenPersist(Incremented(1, note)).andThen { _ =>
+          ctx.sender() ! IncrementAck
+        }
       case (Get, state, ctx) =>
         ctx.sender() ! state.value.intValue
         ctx.done

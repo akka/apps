@@ -7,7 +7,7 @@
 # EXTRA_RUNLIST='"role[benchmark-sharding]",' ./make-node-files-from-gcloud.sh akka-node-00 '["10.132.0.7", "10.132.0.8"]'
 
 
-# -------------------- functions s
+# -------------------- functions --------------------
 json_append() {
   local old_json=$1; shift
   local count=0
@@ -44,8 +44,7 @@ declare -r CASSANDRA_CONTACT_POINTS=$(
     awk ' BEGIN { ORS = ""; print "["; } { print "\/\@"$0"\/\@"; } END { print "]"; }' | sed "s^\"^\\\\\"^g;s^\/\@\/\@^\", \"^g;s^\/\@^\"^g" 
   )
 
-
-IFysS=$'\n'       # make newlines the only separator
+IFS=$'\n'       # make newlines the only separator
 for node in $(gcloud compute instances list | grep "$GREP" | grep "RUNNING" | awk ' { print $1,$4,$5 } ')
 do
   name=$(echo $node | awk ' { print $1} ')

@@ -1,7 +1,7 @@
 val Akka = "2.5.6"
 val AkkaHttp = "10.0.9"
 val AkkaCom = "1.1-M3+9-b90ac06d"
-val AkkaClusterManagement = "0.3"
+val AkkaClusterManagement = "0.4+3-e4fc9d58"
 val AkkaPersistenceCassandra = "0.56"
 val KryoVersion = "0.5.1"
 val HdrHistogramVersion = "2.1.9"
@@ -12,7 +12,7 @@ lazy val `apps-root` = project
   .aggregate(pubsub)
 //  .enablePlugins(ScalafmtPlugin)
 
-lazy val commonPlugins = List(AutomateHeaderPlugin, JavaAppPackaging)
+lazy val commonPlugins = List( JavaAppPackaging)
 
 lazy val ddata = project.enablePlugins(commonPlugins: _*)
   .settings(

@@ -18,13 +18,14 @@ echo "$cassandra_instances"
 echo "Akka instances"
 echo "$akka_instances"
 
-cassandra_seeds=$(aws ${aws_args} ec2 describe-instances --filters Name=tag:Purpose,Values=re --filter Name=tag:Role,Values=re-cassandra --query 'Reservations[].Instances[].[PublicIpAddress]' --output text)
+# Always get the seed from eu-west-1
+cassandra_seeds=$(aws --region=eu-west-1 ec2 describe-instances --filters Name=tag:Purpose,Values=re --filter Name=tag:Role,Values=re-cassandra --query 'Reservations[].Instances[].[PublicIpAddress]' --output text)
 
 read -r -a cassandra_seeds_arr <<< "$cassandra_seeds"
 cassandra_seed="${cassandra_seeds_arr[0]}"
 echo "Setting Cassandra seed to: $cassandra_seed"
 
-akka_seeds=$(aws ${aws_args} ec2 describe-instances --filters Name=tag:Purpose,Values=re --filter Name=tag:Role,Values=re-akka  --query 'Reservations[].Instances[].[PublicIpAddress]' --output text)
+akka_seeds=$(aws --region=eu-west-1 ec2 describe-instances --filters Name=tag:Purpose,Values=re --filter Name=tag:Role,Values=re-akka  --query 'Reservations[].Instances[].[PublicIpAddress]' --output text)
 
 read -r -a akka_seeds_arr <<< "$akka_seeds"
 akka_seed="${akka_seeds_arr[0]}"
@@ -53,7 +54,7 @@ while read -r node; do
     sed "s/EXTERNAL_IP/$external_ip/g" |
     sed "s/DC/$dc/g"                   |
     sed "s/AKKA_SEED_IP/$akka_seed/g"  |
-    sed "s/CASSANDRA_SEED_IP/$cassandra_seed/g" > ./nodes/${name}.json.test
+    sed "s/CASSANDRA_SEED_IP/$cassandra_seed/g" > ./nodes/${name}.json
 
   echo "Generated: ./nodes/$name.json"
 

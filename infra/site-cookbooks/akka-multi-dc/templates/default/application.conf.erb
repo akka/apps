@@ -9,14 +9,14 @@ akka {
   remote {
     netty.tcp {
       # going across DCs so need the external IP
-      hostname = "<%= node['ipaddress'] %>"
+      hostname = "<%= node['ipaddress-external'] %>"
       port = <%= node['akka']['port'] %>
       bind-hostname = "0.0.0.0"
     }
     
     artery {
       # enabled = on this is up to the app to decide
-      canonical.hostname = "<%= node['ipaddress'] %>"
+      canonical.hostname = "<%= node['ipaddress-external'] %>"
       canonical.port = <%= node['akka']['port'] %>
     }
   } 
@@ -40,6 +40,10 @@ akka {
     http.management {
       hostname = "0.0.0.0"
       port = 19999
+    }
+
+    multi-data-center {
+      self-data-center = "<%= node['akka']['dc'] %>"
     }
   }
 

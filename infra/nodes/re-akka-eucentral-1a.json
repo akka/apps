@@ -1,6 +1,6 @@
 {
     "akka": {
-        "dc": "eu-west", 
+        "dc": "eu-central", 
         "min_nodes": 2, 
         "port": 2551, 
         "roles": [], 
@@ -22,9 +22,9 @@
         }
     }, 
     "chef_environment": "_default", 
-    "ipaddress": "172.31.0.162", 
-    "ipaddress-external": "34.253.235.234", 
-    "ipaddress-internal": "172.31.0.162", 
+    "ipaddress": "172.31.12.178", 
+    "ipaddress-external": "35.158.126.67", 
+    "ipaddress-internal": "172.31.12.178", 
     "java": {
         "jdk_version": 8, 
         "oracle": {
@@ -32,7 +32,7 @@
         }, 
         "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
     }, 
-    "name": "re-akka-euwest-1c", 
+    "name": "re-akka-eucentral-1a", 
     "run_list": [
         "role[benchmark]", 
         "role[akka-re]"

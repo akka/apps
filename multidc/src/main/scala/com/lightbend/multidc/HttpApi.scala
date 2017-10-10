@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package com.lightbend.re
+package com.lightbend.multidc
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.cluster.Cluster
 import akka.cluster.http.management.ClusterHttpManagementRoutes
 import akka.http.scaladsl.Http
@@ -24,7 +24,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import com.lightbend.re.ReplicatedCounter.{Get, Increment, ShardingEnvelope}
+import com.lightbend.multidc.ReplicatedCounter.{Get, Increment, ShardingEnvelope}
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -40,28 +40,35 @@ object HttpApi {
     implicit val timeout: Timeout = Timeout(10.seconds)
 
     val api =
-      concat(
-        path("counter") {
-          get {
-            parameters("id".as[String]) {
-              (id: String) =>
-                onComplete((counterProxy ? ShardingEnvelope(id, Get)).mapTo[Int]) {
-                  case Success(i) => complete(i.toString)
-                  case Failure(ex) => complete(StatusCodes.BadRequest, ex.toString)
-                }
-            }
-          } ~ put {
-            parameters("id".as[String]) {
-              (id: String) =>  {
-                counterProxy ! ShardingEnvelope(id, Increment("http request"))
-                complete(StatusCodes.OK)
+      path("counter") {
+        get {
+          parameters("id".as[String]) {
+            (id: String) =>
+              onComplete((counterProxy ? ShardingEnvelope(id, Get)).mapTo[Int]) {
+                case Success(i) => complete(i.toString)
+                case Failure(ex) => complete(StatusCodes.BadRequest, ex.toString)
               }
+          }
+        } ~ put {
+          parameters("id".as[String]) {
+            (id: String) => {
+              counterProxy ! ShardingEnvelope(id, Increment("http request"))
+              complete(StatusCodes.OK)
             }
           }
-        },
-        ClusterHttpManagementRoutes(Cluster(system))
-      )
-
+        }
+      } ~
+    path("bench") {
+      get {
+        parameters("counters".as[Int], "updates".as[Int]) {
+          (counters, updates) =>
+            (0 until counters).foreach(counter => {
+              system.actorOf(Props(classOf[Incrementor], counter.toString, updates, counterProxy))
+            })
+            complete(StatusCodes.OK)
+        }
+      }
+    }
 
     Http().bindAndHandle(api, httpHost, httpPort).onComplete {
       case Success(_) => system.log.info("HTTP Server bound to http://{}:{}", httpHost, httpPort)
