@@ -21,6 +21,11 @@
             ]
         }
     }, 
+    "cassandra": {
+        "contact_points": [
+            "54.154.209.172"
+        ]
+    }, 
     "chef_environment": "_default", 
     "ipaddress": "172.31.17.21", 
     "ipaddress-external": "52.59.226.71", 

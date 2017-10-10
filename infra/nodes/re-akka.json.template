@@ -12,7 +12,9 @@
       "min_nodes": 2,
       "dc": "DC"
     },
-
+    "cassandra": {
+      "contact_points": ["CASSANDRA_SEED_IP"]
+    },
     "authorization": {
       "sudo": {
         "users": ["akka", "ubuntu", "ktoso", "patriknw", "chbatey"],

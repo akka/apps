@@ -56,17 +56,25 @@ object HttpApi {
           }
         }
       } ~
-    path("bench") {
-      get {
-        parameters("counters".as[Int], "updates".as[Int]) {
-          (counters, updates) =>
-            (0 until counters).foreach(counter => {
-              system.actorOf(Props(classOf[Incrementor], counter.toString, updates, counterProxy))
-            })
-            complete(StatusCodes.OK)
+        path("test") {
+          get {
+            parameters("counters".as[Int], "updates".as[Int]) {
+              (counters, updates) =>
+                (0 until counters).foreach(counter => {
+                  system.actorOf(Props(classOf[Incrementor], counter.toString, updates, counterProxy))
+                })
+                complete(StatusCodes.OK)
+            }
+          }
+        } ~ path("single-counter-test") {
+        get {
+          parameters("counter".as[String], "updates".as[Int]) {
+            (counter, updates) =>
+              system.actorOf(Props(classOf[Incrementor], counter, updates, counterProxy))
+              complete(StatusCodes.OK)
+          }
         }
       }
-    }
 
     Http().bindAndHandle(api, httpHost, httpPort).onComplete {
       case Success(_) => system.log.info("HTTP Server bound to http://{}:{}", httpHost, httpPort)

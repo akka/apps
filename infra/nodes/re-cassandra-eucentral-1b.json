@@ -1,31 +1,30 @@
 {
-    "apt": {
-        "confd": {
-            "force_confask": false, 
-            "force_confold": true
-        }
-    }, 
-    "cassandra": {
-        "config": {
-            "cluster_name": "Test Cluster", 
-            "snitch": "Ec2MultiRegionSnitch"
-        }, 
-        "install_java": false, 
-        "seed_node": "54.154.209.172"
-    }, 
-    "chef_environment": "_default", 
-    "ipaddress": "172.31.25.170", 
-    "ipaddress-external": "35.158.95.74", 
-    "ipaddress-internal": "172.31.25.170", 
-    "java": {
-        "jdk_version": 8, 
-        "oracle": {
-            "accept_oracle_download_terms": true
-        }, 
-        "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
-    }, 
-    "name": "re-cassandra-eucentral-1b", 
-    "run_list": [
-        "role[cassandra-re]"
-    ]
+  "chef_environment": "_default", 
+  "ipaddress-internal": "172.31.25.170",
+  "ipaddress-external": "35.158.95.74",
+  "name": "re-cassandra-eucentral-1b",
+  "java": {
+    "jdk_version": 8,
+    "oracle": {
+      "accept_oracle_download_terms": true
+    },
+    "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
+  },
+  "cassandra": {
+    "seed_node": "54.154.209.172",
+    "install_java": false,
+    "config": {
+      "cluster_name": "Test Cluster",
+      "snitch": "Ec2MultiRegionSnitch"
+    }
+  },
+  "run_list": [
+      "role[cassandra-re]"
+  ],
+  "apt": {
+    "confd": {
+      "force_confold": true,
+      "force_confask": false
+    }
+  }
 }
