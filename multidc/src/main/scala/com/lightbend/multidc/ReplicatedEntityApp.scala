@@ -38,7 +38,6 @@ object ReplicatedEntityApp extends App {
 
   implicit val system: ActorSystem = ActorSystem("MultiDcSystem", conf)
 
-  system.actorOf(Props[MemberWatcher])
 
   val cluster = Cluster(system)
   ClusterHttpManagement(cluster).start()

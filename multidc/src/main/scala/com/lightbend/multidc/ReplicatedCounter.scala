@@ -59,7 +59,6 @@ object ReplicatedCounter {
 }
 
 class ReplicatedCounter extends ReplicatedEntity[ReplicatedCounter.Command, ReplicatedCounter.Event, Counter] {
-
   import ReplicatedCounter._
 
   override def initialState: Counter = Counter.empty
