@@ -58,20 +58,6 @@ object ReplicatedEntityApp extends App {
 
   HttpApi.startServer("localhost", 8080, counterProxy)
 
-  if (Cluster(system).selfRoles("load-generator")) {
-    Thread.sleep(2000)
-    val nrEntities = 1000
-    val nrIncrements = 1000000
-    println(s"Sending load")
-    (1 to nrEntities).foreach { i =>
-      val entityId = i.toString
-      (1 to nrIncrements).foreach { _ =>
-        counterProxy ! ShardingEnvelope(entityId, Increment("up you go"))
-        Thread.sleep(50)
-      }
-    }
-  }
-
   StdIn.readLine()
   system.terminate()
 }
