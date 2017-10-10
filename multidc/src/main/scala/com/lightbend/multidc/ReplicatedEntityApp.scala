@@ -18,12 +18,11 @@ package com.lightbend.multidc
 
 import java.io.File
 
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.ActorSystem
 import akka.cluster.Cluster
 import akka.cluster.http.management.ClusterHttpManagement
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
 import akka.persistence.multidc.PersistenceMultiDcSettings
-import com.lightbend.multidc.ReplicatedCounter.{Increment, ShardingEnvelope}
 import com.typesafe.config.ConfigFactory
 
 import scala.io.StdIn
@@ -42,21 +41,14 @@ object ReplicatedEntityApp extends App {
   val cluster = Cluster(system)
   ClusterHttpManagement(cluster).start()
 
-  ClusterSharding(system).start(
+  val shardedCounters = ClusterSharding(system).start(
     typeName = ReplicatedCounter.ShardingTypeName,
     entityProps = ReplicatedCounter.shardingProps(PersistenceMultiDcSettings(system)),
     settings = ClusterShardingSettings(system),
     extractEntityId = ReplicatedCounter.extractEntityId,
     extractShardId = ReplicatedCounter.extractShardId)
 
-  val counterProxy: ActorRef = ClusterSharding(system).startProxy(
-    typeName = ReplicatedCounter.ShardingTypeName,
-    role = None,
-    dataCenter = Some("eu-west"),
-    extractEntityId = ReplicatedCounter.extractEntityId,
-    extractShardId = ReplicatedCounter.extractShardId)
-
-  HttpApi.startServer("localhost", 8080, counterProxy)
+  HttpApi.startServer("localhost", 8080, shardCounters)
 
   StdIn.readLine()
   system.terminate()
