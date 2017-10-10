@@ -29,25 +29,24 @@ package "git"
 #   EOH
 # end
 
-#bash "clone akka/apps/multidc" do
-#  code <<-EOH
-#    cd /home/akka/multidc
-#    rm -rf apps
-#    git clone https://github.com/chbatey/apps.git
+bash "clone akka/apps/multidc" do
+ code <<-EOH
+   cd /home/akka/multidc
+   rm -rf apps
+   git clone -b replicated-entity-tests https://github.com/chbatey/apps.git
+   chown -R akka.akka apps
+ EOH
+end
+
+
+
+# bash "clone akka/apps/management" do
+#   code <<-EOH
+#     cd /home/akka/multidc
+#     rm -rf apps-management
+#     git clone -b rep-test https://github.com/chbatey/akka-management.git
 #
-#    chown -R akka.akka apps
-#  EOH
-# end
-#
-
-
-bash "clone akka/apps/management" do
-  code <<-EOH
-    cd /home/akka/multidc
-    rm -rf apps
-    git clone https://github.com/chbatey/akka-management.git 
-
-    chown -R akka.akka akka-management
-  EOH
- end
+#     chown -R akka.akka akka-management
+#   EOH
+#  end
 
