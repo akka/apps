@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash -x
 
 DC1=localhost:8080
 DC2=localhost:8081

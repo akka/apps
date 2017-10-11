@@ -17,7 +17,6 @@
 package com.lightbend.multidc
 
 import akka.persistence.multidc.scaladsl._
-
 import akka.actor.Props
 import akka.persistence.multidc.PersistenceMultiDcSettings
 import akka.cluster.sharding.ShardRegion
@@ -65,15 +64,15 @@ class ReplicatedCounter extends ReplicatedEntity[ReplicatedCounter.Command, Repl
     case Incremented(delta, _) => state.applyEvent(Counter.Updated(delta))
   }
 
-  override def actions: Actions = {
-    Actions {
+  override def commandHandler: CommandHandler = {
+    CommandHandler {
       case (Increment(note), state, ctx) =>
-        ctx.thenPersist(Incremented(1, note)).andThen { _ =>
+        Effect.persist(Incremented(1, note)).andThen { _ =>
           ctx.sender() ! IncrementAck
         }
       case (Get, state, ctx) =>
         ctx.sender() ! state.value.intValue
-        ctx.done
+        Effect.done
     }
   }
 }

@@ -1,6 +1,6 @@
 val Akka = "2.5.6"
 val AkkaHttp = "10.0.9"
-val AkkaCom = "1.1-M3+9-b90ac06d"
+val AkkaCom = "1.1-M3+20-4407ee1a"
 val AkkaClusterManagement = "0.5"
 val AkkaPersistenceCassandra = "0.56"
 val KryoVersion = "0.5.1"
@@ -36,7 +36,7 @@ lazy val sharding = project.enablePlugins(commonPlugins: _*)
       "com.typesafe.akka"     %% "akka-persistence"             % Akka,
       "org.hdrhistogram"       % "HdrHistogram"                 % HdrHistogramVersion,
       "com.typesafe.akka"     %% "akka-persistence-cassandra"   % AkkaPersistenceCassandra,
-      "com.github.romix.akka" %% "akka-kryo-serialization"      % "0.5.1",
+      "com.github.romix.akka" %% "akka-kryo-serialization"      % KryoVersion,
       "com.lightbend.akka"    %% "akka-management-cluster-http" % AkkaClusterManagement
 
     )
