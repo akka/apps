@@ -83,4 +83,10 @@ Local write latency: 0.094 ms
 
 ```
 
-So nearly all on the messages table. I wonder if this stat is actually per row read.
+So nearly all on the messages table. This must be rows read.
+
+Attaching JConsole to a Cassandra node:
+
+Running 3000 counters updated in 1 DC 1000 times, acking each increment before doing the next.
+
+Cassandra writes settle at 2.5/node.

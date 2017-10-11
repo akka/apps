@@ -1,9 +1,9 @@
 val Akka = "2.5.6"
 val AkkaHttp = "10.0.9"
-val AkkaCom = "1.1-M3+20-4407ee1a"
+val AkkaCom = "1.1-M3+48-65ac8a7a"
 val AkkaClusterManagement = "0.5"
 val AkkaPersistenceCassandra = "0.56"
-val KryoVersion = "0.5.1"
+val KryoVersion = "0.5.0"
 val HdrHistogramVersion = "2.1.9"
 
 lazy val `apps-root` = project
@@ -78,7 +78,7 @@ lazy val multidc = project
   )
 
 inThisBuild(Seq(
-  scalaVersion := "2.12.3",
+  scalaVersion := "2.11.11",
   //scalafmtVersion := "1.0.0-RC2",
   test in assembly := {},
 
