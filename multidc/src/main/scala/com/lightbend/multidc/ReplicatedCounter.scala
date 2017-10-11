@@ -21,6 +21,7 @@ import akka.actor.Props
 import akka.persistence.multidc.PersistenceMultiDcSettings
 import akka.cluster.sharding.ShardRegion
 import akka.cluster.sharding.ShardRegion.StartEntity
+import akka.persistence.multidc.SpeculativeReplicatedEvent
 
 object ReplicatedCounter {
 
@@ -45,13 +46,15 @@ object ReplicatedCounter {
 
   val extractEntityId: ShardRegion.ExtractEntityId = {
     case ShardingEnvelope(entityId, cmd) => (entityId, cmd)
+    case evt: SpeculativeReplicatedEvent => (evt.entityId, evt)
   }
 
   val MaxShards = 100
   def shardId(entityId: String): String = (math.abs(entityId.hashCode) % MaxShards).toString
   val extractShardId: ShardRegion.ExtractShardId = {
     case ShardingEnvelope(entityId, _) => shardId(entityId)
-    case StartEntity(entityId) => shardId(entityId)
+    case evt: SpeculativeReplicatedEvent => shardId(evt.entityId)
+    case StartEntity(entityId)           => shardId(entityId)
   }
 }
 

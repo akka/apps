@@ -21,7 +21,7 @@ import java.io.File
 import akka.actor.ActorSystem
 import akka.cluster.Cluster
 import akka.cluster.http.management.ClusterHttpManagement
-import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
+import akka.cluster.sharding.{ ClusterSharding, ClusterShardingSettings }
 import akka.persistence.multidc.PersistenceMultiDcSettings
 import com.typesafe.config.ConfigFactory
 
@@ -38,16 +38,25 @@ object ReplicatedEntityApp extends App {
 
   implicit val system: ActorSystem = ActorSystem("MultiDcSystem", conf)
 
-
   val cluster = Cluster(system)
   ClusterHttpManagement(cluster).start()
 
+  val persistenceMultiDcSettings = PersistenceMultiDcSettings(system)
+
   val shardedCounters = ClusterSharding(system).start(
     typeName = ReplicatedCounter.ShardingTypeName,
-    entityProps = ReplicatedCounter.shardingProps(PersistenceMultiDcSettings(system)),
+    entityProps = ReplicatedCounter.shardingProps(persistenceMultiDcSettings),
     settings = ClusterShardingSettings(system),
     extractEntityId = ReplicatedCounter.extractEntityId,
     extractShardId = ReplicatedCounter.extractShardId)
+
+  // The speculative replication requires sharding proxies to other DCs
+  if (persistenceMultiDcSettings.useSpeculativeReplication) {
+    persistenceMultiDcSettings.otherDcs(Cluster(system).selfDataCenter).foreach { dc =>
+      ClusterSharding(system).startProxy(ReplicatedCounter.ShardingTypeName, role = None,
+        dataCenter = Some(dc), ReplicatedCounter.extractEntityId, ReplicatedCounter.extractShardId)
+    }
+  }
 
   HttpApi.startServer(conf.getString("multidc.host"), conf.getInt("multidc.port"), shardedCounters)
 
