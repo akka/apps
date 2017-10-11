@@ -6,6 +6,8 @@ akka {
 
   actor.provider = cluster
 
+  allow-java-serialization = no
+
   remote {
     netty.tcp {
       # going across DCs so need the external IP
@@ -63,8 +65,8 @@ cassandra-journal-multi-dc {
        "\"#{node}\""
     end).join(",\n    ") %>
   ]
-
   local-datacenter = "<%= node['akka']['dc'] %>"
+  log-queries = on
 }
 
 cassandra-query-journal-multi-dc {
@@ -73,6 +75,8 @@ cassandra-query-journal-multi-dc {
        "\"#{node}\""
     end).join(",\n    ") %>
   ]
+  local-datacenter = "<%= node['akka']['dc'] %>"
+  log-queries = on
 }
 
 cassandra-snapshot-store {
@@ -85,5 +89,7 @@ cassandra-snapshot-store {
     end).join(",\n    ") %>
   ]
 
+  local-datacenter = "<%= node['akka']['dc'] %>"
+  log-queries = on
 }
 

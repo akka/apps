@@ -54,8 +54,6 @@ object ReplicatedCounter {
     case ShardingEnvelope(entityId, cmd) => shardId(entityId)
     case StartEntity(entityId) => shardId(entityId)
   }
-
-
 }
 
 class ReplicatedCounter extends ReplicatedEntity[ReplicatedCounter.Command, ReplicatedCounter.Event, Counter] {

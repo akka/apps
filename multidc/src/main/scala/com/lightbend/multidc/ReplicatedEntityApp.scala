@@ -33,6 +33,7 @@ object ReplicatedEntityApp extends App {
     if (rootConfFile.exists) ConfigFactory.parseFile(rootConfFile)
     else ConfigFactory.empty("no-root-application-conf-found")
   val conf = rootConf.withFallback(ConfigFactory.load())
+
   println(s"Cloud configuration: ${rootConfFile.exists}")
 
   implicit val system: ActorSystem = ActorSystem("MultiDcSystem", conf)
@@ -48,7 +49,7 @@ object ReplicatedEntityApp extends App {
     extractEntityId = ReplicatedCounter.extractEntityId,
     extractShardId = ReplicatedCounter.extractShardId)
 
-  HttpApi.startServer("localhost", 8080, shardCounters)
+  HttpApi.startServer(conf.getString("multidc.host"), conf.getInt("multidc.port"), shardedCounters)
 
   StdIn.readLine()
   system.terminate()
