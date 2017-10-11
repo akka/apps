@@ -31,6 +31,14 @@ read -r -a akka_seeds_arr <<< "$akka_seeds"
 akka_seed="${akka_seeds_arr[0]}"
 echo "Setting Akka seed to: $akka_seed"
 
+# Cassandra contact point should be local to the DC
+# Always get the seed from eu-west-1
+cassandra_contact_points=$(aws ${aws_args} ec2 describe-instances --filters Name=tag:Purpose,Values=re --filter Name=tag:Role,Values=re-cassandra --query 'Reservations[].Instances[].[PublicIpAddress]' --output text)
+
+read -r -a cassandra_contact_arr <<< "$cassandra_contact_points"
+cassandra_contact_point="${cassandra_contact_arr[0]}"
+echo "Setting Cassandra contact_point to: $cassandra_contact_points"
+
 
 echo "Generating files"
 while read -r node; do
@@ -54,6 +62,7 @@ while read -r node; do
     sed "s/EXTERNAL_IP/$external_ip/g" |
     sed "s/DC/$dc/g"                   |
     sed "s/AKKA_SEED_IP/$akka_seed/g"  |
+    sed "s/CASSANDRA_CONTACT_IP/$cassandra_contact_point/g"  |
     sed "s/CASSANDRA_SEED_IP/$cassandra_seed/g" > ./nodes/${name}.json
 
   echo "Generated: ./nodes/$name.json"
@@ -81,6 +90,7 @@ while read -r node; do
     sed "s/EXTERNAL_IP/$external_ip/g" |
     sed "s/DC/$dc/g"                   |
     sed "s/AKKA_SEED_IP/$akka_seed/g"  |
+    sed "s/CASSANDRA_CONTACT_IP/$cassandra_contact_point/g"  |
     sed "s/CASSANDRA_SEED_IP/$cassandra_seed/g" > ./nodes/${name}.json
 
   echo "Generated: ./nodes/$name.json"

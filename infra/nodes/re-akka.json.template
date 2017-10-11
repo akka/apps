@@ -13,7 +13,7 @@
       "dc": "DC"
     },
     "cassandra": {
-      "contact_points": ["CASSANDRA_SEED_IP"]
+      "contact_points": ["CASSANDRA_CONTACT_IP"]
     },
     "authorization": {
       "sudo": {

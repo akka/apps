@@ -23,7 +23,7 @@
     }, 
     "cassandra": {
         "contact_points": [
-            "54.154.209.172"
+            "54.93.142.63"
         ]
     }, 
     "chef_environment": "_default", 
