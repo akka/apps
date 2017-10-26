@@ -1,0 +1,112 @@
+{
+  "Instances": [
+    {
+      "Monitoring": {
+        "State": "disabled"
+      },
+      "PublicDnsName": "ec2-176-34-141-181.eu-west-1.compute.amazonaws.com",
+      "State": {
+        "Code": 16,
+        "Name": "running"
+      },
+      "EbsOptimized": true,
+      "LaunchTime": "2017-10-05T13:11:47.000Z",
+      "PublicIpAddress": "176.34.141.181",
+      "PrivateIpAddress": "172.31.28.174",
+      "ProductCodes": [],
+      "VpcId": "vpc-e3af5484",
+      "StateTransitionReason": "",
+      "InstanceId": "i-00b6c7ff932f242f4",
+      "EnaSupport": true,
+      "ImageId": "ami-785db401",
+      "PrivateDnsName": "ip-172-31-28-174.eu-west-1.compute.internal",
+      "KeyName": "replicated-entity",
+      "SecurityGroups": [
+        {
+          "GroupName": "re-cassandra",
+          "GroupId": "sg-6c121b14"
+        }
+      ],
+      "ClientToken": "jRsqa1507209106438",
+      "SubnetId": "subnet-4d955304",
+      "InstanceType": "m4.xlarge",
+      "NetworkInterfaces": [
+        {
+          "Status": "in-use",
+          "MacAddress": "06:77:4a:43:a3:2c",
+          "SourceDestCheck": true,
+          "VpcId": "vpc-e3af5484",
+          "Description": "Primary network interface",
+          "NetworkInterfaceId": "eni-99b946a7",
+          "PrivateIpAddresses": [
+            {
+              "PrivateDnsName": "ip-172-31-28-174.eu-west-1.compute.internal",
+              "PrivateIpAddress": "172.31.28.174",
+              "Primary": true,
+              "Association": {
+                "PublicIp": "176.34.141.181",
+                "PublicDnsName": "ec2-176-34-141-181.eu-west-1.compute.amazonaws.com",
+                "IpOwnerId": "amazon"
+              }
+            }
+          ],
+          "PrivateDnsName": "ip-172-31-28-174.eu-west-1.compute.internal",
+          "Attachment": {
+            "Status": "attached",
+            "DeviceIndex": 0,
+            "DeleteOnTermination": true,
+            "AttachmentId": "eni-attach-f0494388",
+            "AttachTime": "2017-10-05T13:11:47.000Z"
+          },
+          "Groups": [
+            {
+              "GroupName": "re-cassandra",
+              "GroupId": "sg-6c121b14"
+            }
+          ],
+          "Ipv6Addresses": [],
+          "OwnerId": "803424716218",
+          "PrivateIpAddress": "172.31.28.174",
+          "SubnetId": "subnet-4d955304",
+          "Association": {
+            "PublicIp": "176.34.141.181",
+            "PublicDnsName": "ec2-176-34-141-181.eu-west-1.compute.amazonaws.com",
+            "IpOwnerId": "amazon"
+          }
+        }
+      ],
+      "SourceDestCheck": true,
+      "Placement": {
+        "Tenancy": "default",
+        "GroupName": "",
+        "AvailabilityZone": "eu-west-1a"
+      },
+      "Hypervisor": "xen",
+      "BlockDeviceMappings": [
+        {
+          "DeviceName": "/dev/sda1",
+          "Ebs": {
+            "Status": "attached",
+            "DeleteOnTermination": true,
+            "VolumeId": "vol-0dcf62ec53857e5ad",
+            "AttachTime": "2017-10-05T13:11:48.000Z"
+          }
+        }
+      ],
+      "Architecture": "x86_64",
+      "RootDeviceType": "ebs",
+      "RootDeviceName": "/dev/sda1",
+      "VirtualizationType": "hvm",
+      "Tags": [
+        {
+          "Value": "re-cassandra-euwest-1a",
+          "Key": "Name"
+        }
+      ],
+      "AmiLaunchIndex": 0
+    }
+  ],
+  "ReservationId": "r-061404c2f70e85dcb",
+  "Groups": [],
+  "OwnerId": "803424716218"
+}

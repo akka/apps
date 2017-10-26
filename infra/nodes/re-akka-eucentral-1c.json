@@ -1,0 +1,45 @@
+{
+    "akka": {
+        "dc": "eu-central", 
+        "min_nodes": 2, 
+        "port": 2551, 
+        "roles": [], 
+        "seed_nodes": [
+            "34.253.235.234"
+        ], 
+        "system_name": "MultiDcSystem"
+    }, 
+    "authorization": {
+        "sudo": {
+            "passwordless": "true", 
+            "users": [
+                "akka", 
+                "ubuntu", 
+                "ktoso", 
+                "patriknw", 
+                "chbatey"
+            ]
+        }
+    }, 
+    "cassandra": {
+        "contact_points": [
+            "54.93.142.63"
+        ]
+    }, 
+    "chef_environment": "_default", 
+    "ipaddress": "172.31.43.89", 
+    "ipaddress-external": "35.158.135.32", 
+    "ipaddress-internal": "172.31.43.89", 
+    "java": {
+        "jdk_version": 8, 
+        "oracle": {
+            "accept_oracle_download_terms": true
+        }, 
+        "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
+    }, 
+    "name": "re-akka-eucentral-1c", 
+    "run_list": [
+        "role[benchmark]", 
+        "role[akka-re]"
+    ]
+}

@@ -16,9 +16,22 @@ user "cassandra" do
 end
 
 
+directory '/var/lib/cassandra/' do
+  owner 'cassandra'
+  group 'cassandra'
+  action :create
+end
+
+directory '/var/log/cassandra/' do
+  owner 'cassandra'
+  group 'cassandra'
+  action :create
+end
+
+
 bash 'install cassandra apt repo' do
   code <<-EOH
-  echo "deb http://www.apache.org/dist/cassandra/debian 310x main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
+  echo "deb http://www.apache.org/dist/cassandra/debian 30x main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
 
   curl https://www.apache.org/dist/cassandra/KEYS | sudo apt-key add -
 

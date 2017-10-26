@@ -18,7 +18,6 @@ package com.lightbend.akka.bench.pubsub
 
 import akka.actor._
 import akka.cluster.singleton._
-import com.lightbend.akka.bench.pubsub.PubSubHost.StartSession
 
 object PubSubHost {
 

@@ -1,0 +1,14 @@
+{
+  "name": "cassandra",
+  "description": "Make a cassandra node",
+  "json_class": "Chef::Role",
+
+  "default_attributes": {
+  },
+
+  "run_list": [
+    "recipe[java-manual]",
+    "recipe[cassandra-linux-tweaks]",
+    "recipe[cassandra-manual]"
+  ]
+}
