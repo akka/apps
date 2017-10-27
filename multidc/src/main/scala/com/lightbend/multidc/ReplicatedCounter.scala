@@ -52,7 +52,7 @@ object ReplicatedCounter {
   val MaxShards = 100
   def shardId(entityId: String): String = (math.abs(entityId.hashCode) % MaxShards).toString
   val extractShardId: ShardRegion.ExtractShardId = {
-    case ShardingEnvelope(entityId, _) => shardId(entityId)
+    case ShardingEnvelope(entityId, _)   => shardId(entityId)
     case evt: SpeculativeReplicatedEvent => shardId(evt.entityId)
     case StartEntity(entityId)           => shardId(entityId)
   }

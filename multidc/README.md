@@ -22,12 +22,11 @@ I think if we add another region or want bigger clusters we should automate the 
 
 The nodes currently have SSH access from my IP, change the security group to yours.
 
-When doing a cross region cluster you can open up the ports in the security group but close them when you are done as
-they are open to the world.
+When doing a cross region cluster you can open up the ports in the security group but close them when you are done as they are open to the world.
 
 Run the chef on the new nodes e.g. 
-* `fix nodes_with_role:re-cassandra`
-* `fix nodes_with_role:re-akka`
+* `fix nodes_with_role:cassandra-re`
+* `fix nodes_with_role:akka-re`
 
 This requires passwordless ssh access. The keys re in your inbox and your ssh config will look something like this:
 

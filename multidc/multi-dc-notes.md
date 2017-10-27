@@ -108,3 +108,12 @@ java.lang.IllegalStateException: Missing sequence number [3942], got [3943] for 
 But it all recovers without intervention and all counters ended up up to date.
 
 Next, switch to artery and repeat.
+
+
+
+# ktoso -- 1DC, split brain testing
+
+1DC
+3 cassandra nodes
+3 akka nodes
+

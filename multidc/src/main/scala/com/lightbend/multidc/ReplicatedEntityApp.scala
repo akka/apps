@@ -39,6 +39,7 @@ object ReplicatedEntityApp extends App {
   implicit val system: ActorSystem = ActorSystem("MultiDcSystem", conf)
 
   val cluster = Cluster(system)
+
   ClusterHttpManagement(cluster).start()
 
   val persistenceMultiDcSettings = PersistenceMultiDcSettings(system)
@@ -60,7 +61,8 @@ object ReplicatedEntityApp extends App {
 
   HttpApi.startServer(conf.getString("multidc.host"), conf.getInt("multidc.port"), shardedCounters)
 
-  StdIn.readLine()
-  system.terminate()
+  // does not play well with executing the app via ssh
+//  StdIn.readLine()
+//  system.terminate()
 }
 
