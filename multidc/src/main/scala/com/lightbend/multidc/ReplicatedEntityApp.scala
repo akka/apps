@@ -51,6 +51,13 @@ object ReplicatedEntityApp extends App {
     extractEntityId = ReplicatedCounter.extractEntityId,
     extractShardId = ReplicatedCounter.extractShardId)
 
+  val shardedIntrospectors = ClusterSharding(system).start(
+    typeName = ReplicatedIntrospector.ShardingTypeName,
+    entityProps = ReplicatedIntrospector.shardingProps(system, persistenceMultiDcSettings),
+    settings = ClusterShardingSettings(system),
+    extractEntityId = ReplicatedIntrospector.extractEntityId,
+    extractShardId = ReplicatedIntrospector.extractShardId)
+
   // The speculative replication requires sharding proxies to other DCs
   if (persistenceMultiDcSettings.useSpeculativeReplication) {
     persistenceMultiDcSettings.otherDcs(Cluster(system).selfDataCenter).foreach { dc =>
@@ -59,7 +66,9 @@ object ReplicatedEntityApp extends App {
     }
   }
 
-  HttpApi.startServer(conf.getString("multidc.host"), conf.getInt("multidc.port"), shardedCounters)
+  val httpHost = conf.getString("multidc.host")
+  val httpPort = conf.getInt("multidc.port")
+  HttpApi.startServer(httpHost, httpPort, shardedCounters, shardedIntrospectors)
 
   // does not play well with executing the app via ssh
 //  StdIn.readLine()

@@ -73,6 +73,7 @@ lazy val multidc = project
       "org.hdrhistogram"       % "HdrHistogram"                 % HdrHistogramVersion,
       "com.lightbend.akka"    %% "akka-management-cluster-http" % AkkaClusterManagement,
       "com.typesafe.akka"     %% "akka-http"                    % AkkaHttp,
+      "com.typesafe.akka"     %% "akka-slf4j"                   % Akka,
       "com.typesafe.akka"     %% "akka-http-spray-json"         % AkkaHttp,
       "ch.qos.logback"         % "logback-classic"              % "1.2.3"
     )

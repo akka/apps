@@ -7,3 +7,10 @@ assemblyMergeStrategy in assembly := {
     val oldStrategy = (assemblyMergeStrategy in assembly).value
     oldStrategy(x)
 }
+
+fork in run := true
+
+javaOptions in run ++= Seq(
+  "-Daeron.mtu.length=1024"
+)
+
