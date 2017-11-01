@@ -26,9 +26,9 @@ import akka.event.Logging
 import akka.persistence.multidc.{PersistenceMultiDcSettings, ReplicatedEventContext, SelfEventContext, SpeculativeReplicatedEvent}
 
 object ReplicatedIntrospector {
-  sealed trait Command
-  case object Inspect extends Command
-  case class Append(payload: String) extends Command
+  sealed trait Command { def id: String }
+  case class Inspect(id: String) extends Command
+  case class Append(id: String, payload: String) extends Command
 
   sealed trait Event { def render: String }
   final case class Stored(command: Command) extends Event {
@@ -42,7 +42,7 @@ object ReplicatedIntrospector {
     def render = s"${Logging.simpleName(getClass)}::command: ${command}"
   }
 
-  case object IncrementAck
+  final case class AllState(events: List[Event])
 
   def props(system: ActorSystem, settings: PersistenceMultiDcSettings): Props =
     ReplicatedEntity.props("", Some("introspector"), () => new ReplicatedIntrospector(system), settings)
@@ -55,16 +55,18 @@ object ReplicatedIntrospector {
   final case class ShardingEnvelope(entityId: String, cmd: Command)
 
   val extractEntityId: ShardRegion.ExtractEntityId = {
-    case ShardingEnvelope(entityId, cmd) => (entityId, cmd)
-    case evt: SpeculativeReplicatedEvent => (evt.entityId, evt)
+    case c: Command                      ⇒ (c.id, c)
+    case ShardingEnvelope(entityId, cmd) ⇒ (entityId, cmd)
+    case evt: SpeculativeReplicatedEvent ⇒ (evt.entityId, evt)
   }
 
   val MaxShards = 100
   def shardId(entityId: String): String = (math.abs(entityId.hashCode) % MaxShards).toString
   val extractShardId: ShardRegion.ExtractShardId = {
-    case ShardingEnvelope(entityId, _)   => shardId(entityId)
-    case evt: SpeculativeReplicatedEvent => shardId(evt.entityId)
-    case StartEntity(entityId)           => shardId(entityId)
+    case c: Command                      ⇒ shardId(c.id)
+    case ShardingEnvelope(entityId, _)   ⇒ shardId(entityId)
+    case evt: SpeculativeReplicatedEvent ⇒ shardId(evt.entityId)
+    case StartEntity(entityId)           ⇒ shardId(entityId)
   }
 }
 
@@ -83,16 +85,19 @@ class ReplicatedIntrospector(system: ActorSystem) extends ReplicatedEntity[Comma
   override def detectConcurrentUpdates: Boolean = true
 
   override def commandHandler = CommandHandler {
-    case (Inspect, state, ctx) ⇒
-      log.info("Inspect arrived; ")
-      state foreach { storedEvent ⇒
-        ctx.sender() ! storedEvent
-      }
+    case (i: Inspect, state, ctx) ⇒
+      log.info("Inspect arrived; all state: " + AllState(state.toList))
+      val replyTo = ctx.sender()
+      replyTo ! AllState(state.toList)
       Effect.done
 
-    case (a @ Append(payload), state, ctx) ⇒
+    case (a @ Append(_, payload), state, ctx) ⇒
       log.info(s"$a arrived;")
-      Effect.persist(Stored(a)).andThen(ctx.sender() ! _)
+      val replyTo = ctx.sender()
+      Effect.persist(Stored(a)).andThen(x ⇒ {
+        log.info("     sending: " + AllState(x.toList))
+        replyTo ! AllState(x.toList)
+      })
   }
 
 
@@ -100,13 +105,17 @@ class ReplicatedIntrospector(system: ActorSystem) extends ReplicatedEntity[Comma
   override def applySelfEvent(event: Event, state: Vector[Event], ctx: SelfEventContext): Vector[Event] = {
     // TODO would be nice if ctx had a logger
     log.info("Applying self event: " + event)
-    state :+ AppliedSelf(event, currentTimeMillis())
+    val s = state :+ AppliedSelf(event, currentTimeMillis())
+    log.info("     State so far: : " + s)
+    s
   }
 
   override def applyReplicatedEvent(event: Event, state: Vector[Event], ctx: ReplicatedEventContext): Vector[Event] = {
     // TODO would be nice if ctx had a logger
     log.info("Applying replicated event: " + event)
-    state :+ AppliedReplicated(event, currentTimeMillis(), ctx.concurrent, ctx.originDc, ctx.sequenceNr, ctx.timestamp)
+    val s = state :+ AppliedReplicated(event, currentTimeMillis(), ctx.concurrent, ctx.originDc, ctx.sequenceNr, ctx.timestamp)
+    log.info("     State so far: : " + s)
+    s
   }
 
   override def applyEvent(event: Event, state: Vector[Event]): Vector[Event] = ???

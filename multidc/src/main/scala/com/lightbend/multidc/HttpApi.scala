@@ -61,23 +61,19 @@ object HttpApi {
     val introspector = pathPrefix("introspector") {
       concat(
         path(Segment) { id ⇒
-          val refSource = Source.actorRef[ReplicatedIntrospector.Event](Int.MaxValue, OverflowStrategy.fail)
-            .map(_.render)
 
-          // TODO "pre-materialize pattern"
-          val (ref, pub) =refSource.toMat(Sink.asPublisher(true))(Keep.both).run()
-          val s = Source.fromPublisher(pub)
-            .intersperse("\n")
-            .map(ByteString(_))
-          // end of "pre-materialize pattern"
+          onComplete((introspectorProxy ? ReplicatedIntrospector.Inspect(id)).mapTo[ReplicatedIntrospector.AllState]) { events ⇒
+            val s = Source.fromIterator(() ⇒ events.get.events.iterator)
+              .map(_.render)
+              .intersperse("\n")
+              .map(ByteString(_))
 
-          introspectorProxy.tell(ReplicatedIntrospector.Inspect, ref)
-
-          complete(HttpResponse(entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, s)))
+            complete(HttpResponse(entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, s)))
+          }
         } ~
         path(Segment / "write" / Segment) { (id, data) ⇒
-          onComplete((introspectorProxy ? ReplicatedIntrospector.Inspect).mapTo[Vector[ReplicatedIntrospector.Event]]) { events ⇒
-            val s = Source(events.get)
+          onComplete((introspectorProxy ? ReplicatedIntrospector.Append(id, data)).mapTo[ReplicatedIntrospector.AllState]) { events ⇒
+            val s = Source.fromIterator(() ⇒ events.get.events.iterator)
               .map(_.render)
               .intersperse("\n")
               .map(ByteString(_))

@@ -7,6 +7,7 @@ for node in "${nodes_all[@]}"; do
   echo "============ Killing MultiDC App on:       $node     ... ============"
   ssh -t -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $HOME/.ssh/replicated-entity.pem akka@${node} "
     killall -9 java
+    rm -rf /dev/shm/*
   "
 
 
