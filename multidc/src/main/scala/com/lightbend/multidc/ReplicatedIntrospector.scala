@@ -79,7 +79,7 @@ class ReplicatedIntrospector(system: ActorSystem) extends ReplicatedEntity[Comma
   override def recoveryCompleted(state: Vector[Event], ctx: ActorContext) = {
     log.info("Recovery complete: " + state)
 
-    Vector.empty
+    state
   }
 
   override def detectConcurrentUpdates: Boolean = true

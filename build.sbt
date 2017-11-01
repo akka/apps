@@ -1,5 +1,5 @@
 val Akka = "2.5.6"
-val AkkaHttp = "10.0.9"
+val AkkaHttp = "10.0.10"
 val AkkaCom = "1.1-M4"
 val AkkaClusterManagement = "0.5"
 val AkkaPersistenceCassandra = "0.57"
