@@ -1,5 +1,7 @@
 {
   "run_list": [
+    "role[akka_team]",
+    "role[jenkins_worker]"
   ],
   "automatic": {
     "ipaddress": "moxie-a7"
