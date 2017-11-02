@@ -45,7 +45,7 @@ Host re-cassandra-eucentral-1a re-cassandra-eucentral-1b re-cassandra-eucentral-
 
 If you shut down the nodes (do that they are expensive) then AWS will give them new IPs so you'll need to re-do the above steps.
 
-## Running the tests
+## Running the tests (counter)
 
 The chef puts the project in /home/akka/multidc/apps
 
@@ -64,6 +64,38 @@ curl -v "localhost:8080/counter?id=0"
 ```
 
 To get the value for a counter.
+
+## Running the "introspector"
+
+This way of testing lets you manually do single writes on either side of the cluster.
+
+There are utilities for splitting and healing partitions, of cassandra as well as the akka cluster itself.
+
+Workflow is basically:
+- start all nodes
+- make sure to have `replicated-entity.pem`, it's in the team keybase
+go to infra (and the `re-central.pem`)
+  - make-re-node-files-from-aws.sh -- refreshes all the IPs and seed nodes in local files
+- make sure to run it for both regions, eu-central-1 and eu-west-1 for example (edit the file and run it again)
+- `fix` all nodes
+  - `fix nodes_with_role:cassandra-re` -- actually updates the servers with the above
+  - `fix nodes_with_role:akka-re` -- actually updates the servers with the above
+- all this was from infra, now move back to multidc and from here you can develop and experiment
+run the app on all nodes run-multi-dc-test-remote.sh
+- IPs are automatically obtained from nodes-bash-exports.sh, though it should be done a bit nicer perhaps later on with using aws command line
+  - you also need to add IPs in the `nodes-bash-exports...` files (!)
+  
+Running and experimenting with things:
+- if you want to experiment, use `rsync-local-src-to-akka-nodes.sh` to sync the sources (src) to all nodes
+- then kill all nodes `kill-multi-dc-test-remote-run.sh` and start them again
+- if you want to introduce package drops use network-fleaky-node.sh, **which is not complete yet** 
+- network splits
+  - `network-split-remoting.sh` or `network-split-cassandra.sh` is used for making a split; do look into the code and edit to get exaclty what you want. 
+  - Syntax is `network-split-cassandra.sh split` or `network-split-cassandra.sh heal`
+  - Syntax is `network-split-remoting.sh split` or `network-split-remoting.sh heal`
+  
+Do look into the scripts to know what they are doing.
+
 
 ## Cassandra cluster
 
