@@ -3,9 +3,9 @@
 # pull in the node ip addresses
 . nodes-bash-exports.sh
 
-echo " ======= $1 ======= "
+echo "======= $1 ======="
 
-if [[ "$1" -eq "split" ]];
+if [[ "$1" = "split" ]];
 then
   echo "========= PARTITION FULL SPLIT... ========="
 
@@ -25,17 +25,13 @@ then
     done
   done
 
-elif [[ "$1" -eq "heal" ]];
+elif [[ "$1" = "heal" ]];
 then
   echo "========= HEAL $2 to rejoin other nodes... ========="
 
   for node in "${nodes_all[@]}"; do
     echo "============ Healing node:       $node     ... ============"
-
-    for separate_from_node in "${nodes_all_ip[@]}"; do
-      ssh -i $HOME/.ssh/replicated-entity.pem ubuntu@${node} "sudo iptables -A INPUT -p udp -s $separate_from_node -j ACCEPT"
-    done
-
+    ssh -i $HOME/.ssh/replicated-entity.pem ubuntu@${node} "sudo iptables -F"
   done
 
 else
