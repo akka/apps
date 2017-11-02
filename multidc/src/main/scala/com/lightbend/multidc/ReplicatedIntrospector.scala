@@ -16,6 +16,8 @@
 
 package com.lightbend.multidc
 
+import java.util.Date
+
 import akka.persistence.multidc.scaladsl.ReplicatedEntity
 import ReplicatedIntrospector._
 import akka.actor.{ActorRef, ActorSystem, Props}
@@ -31,15 +33,23 @@ object ReplicatedIntrospector {
   case class Append(id: String, payload: String) extends Command
 
   sealed trait Event { def render: String }
-  final case class Stored(command: Command) extends Event {
-    def render = s"${Logging.simpleName(getClass)}::command: ${command}"
+  final case class Stored(command: Command, dc: String) extends Event {
+    def render = s"Stored::command: ${command}"
   }
 
-  final case class AppliedSelf(command: Event, timestampApply: Long) extends Event {
-    def render = s"${Logging.simpleName(getClass)}::command: ${command}"
+  final case class AppliedSelf(command: Event, timestampApply: Long, dc: String) extends Event {
+    def render = s"AppliedSelf::command: ${command}" +
+      s"apply @  ${new Date(timestampApply)}" +
+      s"selfDc @  ${dc}"
   }
-  final case class AppliedReplicated(command: Event, timestampApply: Long, concurrent: Boolean, originDc: String, ctxSequenceNr: Long, ctxTimestamp: Long) extends Event {
-    def render = s"${Logging.simpleName(getClass)}::command: ${command}"
+  final case class AppliedReplicated(command: Event, timestampApply: Long, selfDc: String, concurrent: Boolean, originDc: String, ctxSequenceNr: Long, ctxTimestamp: Long) extends Event {
+    def render = s"AppliedReplicated::command: ${command}  " +
+      s"apply @ ${new Date(timestampApply)} " +
+      s"concurrent:${concurrent} " +
+      s"selfDc:${selfDc} " +
+      s"originDc:${originDc} " +
+      s"ctxTimestamp:${new Date(ctxTimestamp)} " +
+      s"ctxSequenceNr:${ctxSequenceNr} "
   }
 
   final case class AllState(events: List[Event])
@@ -94,7 +104,7 @@ class ReplicatedIntrospector(system: ActorSystem) extends ReplicatedEntity[Comma
     case (a @ Append(_, payload), state, ctx) ⇒
       log.info(s"$a arrived;")
       val replyTo = ctx.sender()
-      Effect.persist(Stored(a)).andThen(x ⇒ {
+      Effect.persist(Stored(a, selfDc)).andThen(x ⇒ {
         log.info("     sending: " + AllState(x.toList))
         replyTo ! AllState(x.toList)
       })
@@ -105,7 +115,7 @@ class ReplicatedIntrospector(system: ActorSystem) extends ReplicatedEntity[Comma
   override def applySelfEvent(event: Event, state: Vector[Event], ctx: SelfEventContext): Vector[Event] = {
     // TODO would be nice if ctx had a logger
     log.info("Applying self event: " + event)
-    val s = state :+ AppliedSelf(event, currentTimeMillis())
+    val s = state :+ AppliedSelf(event, currentTimeMillis(), selfDc)
     log.info("     State so far: : " + s)
     s
   }
@@ -113,7 +123,7 @@ class ReplicatedIntrospector(system: ActorSystem) extends ReplicatedEntity[Comma
   override def applyReplicatedEvent(event: Event, state: Vector[Event], ctx: ReplicatedEventContext): Vector[Event] = {
     // TODO would be nice if ctx had a logger
     log.info("Applying replicated event: " + event)
-    val s = state :+ AppliedReplicated(event, currentTimeMillis(), ctx.concurrent, ctx.originDc, ctx.sequenceNr, ctx.timestamp)
+    val s = state :+ AppliedReplicated(event, currentTimeMillis(), selfDc, ctx.concurrent, ctx.originDc, ctx.sequenceNr, ctx.timestamp)
     log.info("     State so far: : " + s)
     s
   }
