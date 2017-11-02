@@ -61,8 +61,12 @@ object ReplicatedEntityApp extends App {
   // The speculative replication requires sharding proxies to other DCs
   if (persistenceMultiDcSettings.useSpeculativeReplication) {
     persistenceMultiDcSettings.otherDcs(Cluster(system).selfDataCenter).foreach { dc =>
+
       ClusterSharding(system).startProxy(ReplicatedCounter.ShardingTypeName, role = None,
         dataCenter = Some(dc), ReplicatedCounter.extractEntityId, ReplicatedCounter.extractShardId)
+
+      ClusterSharding(system).startProxy(ReplicatedIntrospector.ShardingTypeName, role = None,
+        dataCenter = Some(dc), ReplicatedIntrospector.extractEntityId, ReplicatedIntrospector.extractShardId)
     }
   }
 
