@@ -96,6 +96,30 @@ Running and experimenting with things:
   
 Do look into the scripts to know what they are doing.
 
+### Inspecting and doing writes
+
+You'll see all clustered nodes logs in the console where you did `run...`.
+
+You can also use akka-cluster management: it's exposed on each node under `http ...:19999/...`, so you can GET the `/members` for example.
+
+Use JMX to look into cassandra writes.
+
+perform writes by sending:
+
+```
+$ http IP_HERE:8080/introspector/alpha/write/DATA_TO_WRITE
+```
+
+this returns the current `state` with detailed information.
+
+You can just inspect the state via:
+
+```
+$ http IP_HERE:8080/introspector/alpha/
+```
+
+
+
 
 ## Cassandra cluster
 
