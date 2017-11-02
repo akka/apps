@@ -36,7 +36,6 @@ package 'oracle-java8-set-default' do
   action :install
 end
 
-
 bash 'download open jdk9' do
   code <<-EOH
   cd /usr/lib/jvm
