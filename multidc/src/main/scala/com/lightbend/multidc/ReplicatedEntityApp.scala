@@ -39,6 +39,7 @@ object ReplicatedEntityApp extends App {
   implicit val system: ActorSystem = ActorSystem("MultiDcSystem", conf)
 
   val cluster = Cluster(system)
+
   ClusterHttpManagement(cluster).start()
 
   val persistenceMultiDcSettings = PersistenceMultiDcSettings(system)
@@ -50,17 +51,31 @@ object ReplicatedEntityApp extends App {
     extractEntityId = ReplicatedCounter.extractEntityId,
     extractShardId = ReplicatedCounter.extractShardId)
 
+  val shardedIntrospectors = ClusterSharding(system).start(
+    typeName = ReplicatedIntrospector.ShardingTypeName,
+    entityProps = ReplicatedIntrospector.shardingProps(system, persistenceMultiDcSettings),
+    settings = ClusterShardingSettings(system),
+    extractEntityId = ReplicatedIntrospector.extractEntityId,
+    extractShardId = ReplicatedIntrospector.extractShardId)
+
   // The speculative replication requires sharding proxies to other DCs
   if (persistenceMultiDcSettings.useSpeculativeReplication) {
     persistenceMultiDcSettings.otherDcs(Cluster(system).selfDataCenter).foreach { dc =>
+
       ClusterSharding(system).startProxy(ReplicatedCounter.ShardingTypeName, role = None,
         dataCenter = Some(dc), ReplicatedCounter.extractEntityId, ReplicatedCounter.extractShardId)
+
+      ClusterSharding(system).startProxy(ReplicatedIntrospector.ShardingTypeName, role = None,
+        dataCenter = Some(dc), ReplicatedIntrospector.extractEntityId, ReplicatedIntrospector.extractShardId)
     }
   }
 
-  HttpApi.startServer(conf.getString("multidc.host"), conf.getInt("multidc.port"), shardedCounters)
+  val httpHost = conf.getString("multidc.host")
+  val httpPort = conf.getInt("multidc.port")
+  HttpApi.startServer(httpHost, httpPort, shardedCounters, shardedIntrospectors)
 
-  StdIn.readLine()
-  system.terminate()
+  // does not play well with executing the app via ssh
+//  StdIn.readLine()
+//  system.terminate()
 }
 

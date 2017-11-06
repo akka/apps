@@ -69,7 +69,7 @@ object DDataBenchmarkCoordinator {
     def startNextRound = copy(
       roundsLeft = this.roundsLeft - 1,
       started = System.nanoTime(),
-      nodesLeft = totalNodes,
+      nodesLeft = totalNodes // we're not always 2.12 so no trailing comma
     )
 
     def recordTiming(timing: Long) = disseminationTiming.recordValue(timing)

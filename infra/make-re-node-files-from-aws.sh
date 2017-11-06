@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # See https://issues.apache.org/jira/browse/CASSANDRA-4026 for this craziness
-region=${REGION:=eu-west-1}
+region=${REGION:=eu-central-1}
 dc=${region::-2}
 echo "Running in region: ${region} dc ${dc}"
 

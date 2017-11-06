@@ -1,5 +1,5 @@
 val Akka = "2.5.6"
-val AkkaHttp = "10.0.9"
+val AkkaHttp = "10.0.10"
 val AkkaCom = "1.1-M4"
 val AkkaClusterManagement = "0.5"
 val AkkaPersistenceCassandra = "0.57"
@@ -64,7 +64,7 @@ lazy val multidc = project
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-persistence-cassandra"   % AkkaPersistenceCassandra,
-      "com.lightbend.akka"    %% "akka-persistence-multi-dc"    % AkkaCom,
+      "com.lightbend.akka"    %% "akka-persistence-multi-dc"    % AkkaCom from "file:///home/akka/akka-persistence-multi-dc_2.11.jar",
       "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
       "com.typesafe.akka"     %% "akka-distributed-data"        % Akka,
       "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,
@@ -73,6 +73,7 @@ lazy val multidc = project
       "org.hdrhistogram"       % "HdrHistogram"                 % HdrHistogramVersion,
       "com.lightbend.akka"    %% "akka-management-cluster-http" % AkkaClusterManagement,
       "com.typesafe.akka"     %% "akka-http"                    % AkkaHttp,
+      "com.typesafe.akka"     %% "akka-slf4j"                   % Akka,
       "com.typesafe.akka"     %% "akka-http-spray-json"         % AkkaHttp,
       "ch.qos.logback"         % "logback-classic"              % "1.2.3"
     )

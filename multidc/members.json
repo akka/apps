@@ -1,0 +1,32 @@
+{
+  "selfNode": "akka://MultiDcSystem@54.154.90.153:2551",
+  "leader": "akka://MultiDcSystem@54.154.90.153:2551",
+  "oldest": "akka://MultiDcSystem@54.154.90.153:2551",
+  "unreachable": [],
+  "members": [
+    {
+      "node": "akka://MultiDcSystem@54.154.90.153:2551",
+      "nodeUid": "5406057317739130193",
+      "status": "Up",
+      "roles": [
+        "dc-eu-west"
+      ]
+    },
+    {
+      "node": "akka://MultiDcSystem@54.229.246.13:2551",
+      "nodeUid": "4214549075124656974",
+      "status": "Up",
+      "roles": [
+        "dc-eu-west"
+      ]
+    },
+    {
+      "node": "akka://MultiDcSystem@54.229.45.233:2551",
+      "nodeUid": "6938931469818103702",
+      "status": "Up",
+      "roles": [
+        "dc-eu-west"
+      ]
+    }
+  ]
+}

@@ -18,7 +18,7 @@ package 'debconf-utils' do
   action :install
 end
 
-bash 'accept oracle license' do 
+bash 'accept oracle license' do
   code <<-EOH
   echo debconf shared/accepted-oracle-license-v1-1 select true | \
     sudo debconf-set-selections
@@ -45,4 +45,3 @@ bash 'download open jdk9' do
   rm jdk-9.0.1_linux-x64_bin.tar.gz
   EOH
 end
-

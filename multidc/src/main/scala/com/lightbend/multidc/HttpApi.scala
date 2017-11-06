@@ -17,11 +17,12 @@
 package com.lightbend.multidc
 
 import akka.actor.{ActorRef, ActorSystem, Props}
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.{Http, model}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.pattern.ask
-import akka.stream.ActorMaterializer
-import akka.util.Timeout
+import akka.stream.{ActorMaterializer, OverflowStrategy}
+import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.util.{ByteString, Timeout}
 import com.lightbend.multidc.ReplicatedCounter.{Get, Increment, ShardingEnvelope}
 
 import scala.concurrent.duration._
@@ -29,7 +30,7 @@ import scala.util.{Failure, Success}
 
 object HttpApi {
 
-  def startServer(httpHost: String, httpPort: Int, counterProxy: ActorRef)(implicit system: ActorSystem) = {
+  def startServer(httpHost: String, httpPort: Int, counterProxy: ActorRef, introspectorProxy: ActorRef)(implicit system: ActorSystem) = {
 
     import akka.http.scaladsl.server.Directives._
 
@@ -37,36 +38,68 @@ object HttpApi {
     import system.dispatcher
     implicit val timeout: Timeout = Timeout(10.seconds)
 
-    val api =
-      path("counter") {
+    val counter = path("counter") {
+      concat(
         get {
-          parameters("id".as[String]) {
-            (id: String) =>
-              onComplete((counterProxy ? ShardingEnvelope(id, Get)).mapTo[Int]) {
-                case Success(i) => complete(i.toString)
-                case Failure(ex) => complete(StatusCodes.BadRequest, ex.toString)
-              }
-          }
-        } ~ put {
-          parameters("id".as[String]) {
-            (id: String) => {
-              counterProxy ! ShardingEnvelope(id, Increment("http request"))
-              complete(StatusCodes.OK)
+          parameters("id") { id ⇒
+            onComplete((counterProxy ? ShardingEnvelope(id, Get)).mapTo[Int]) {
+              case Success(i) => complete(i.toString)
+              case Failure(ex) => complete(StatusCodes.BadRequest, ex.toString)
             }
+          }
+        },
+        put {
+          parameters("id") { id ⇒
+            counterProxy ! ShardingEnvelope(id, Increment("http request"))
+            complete(StatusCodes.OK)
           }
         }
-      } ~
-        path("test") {
-          get {
-            parameters("counters".as[Int], "updates".as[Int]) {
-              (counters, updates) =>
-                (0 until counters).foreach(counter => {
-                  system.actorOf(Props(classOf[Incrementor], counter.toString, updates, counterProxy))
-                })
-                complete(StatusCodes.OK)
-            }
+      )
+    }
+
+    // these routes are not "RESTful" and I don't care :P Optimised for easy use from CLI.
+    val introspector = pathPrefix("introspector") {
+      concat(
+        path(Segment) { id ⇒
+
+          onComplete((introspectorProxy ? ReplicatedIntrospector.Inspect(id)).mapTo[ReplicatedIntrospector.AllState]) { events ⇒
+            val s = Source.fromIterator(() ⇒ events.get.events.iterator)
+              .map(_.render)
+              .intersperse("\n")
+              .map(ByteString(_))
+
+            complete(HttpResponse(entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, s)))
           }
-        } ~ path("single-counter-test") {
+        } ~
+        path(Segment / "write" / Segment) { (id, data) ⇒
+          onComplete((introspectorProxy ? ReplicatedIntrospector.Append(id, data)).mapTo[ReplicatedIntrospector.AllState]) { events ⇒
+            val s = Source.fromIterator(() ⇒ events.get.events.iterator)
+              .map(_.render)
+              .intersperse("\n")
+              .map(ByteString(_))
+
+            complete(HttpResponse(entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, s)))
+          }
+        }
+      )
+    }
+
+    val api = concat(
+      counter,
+      introspector,
+
+      path("test") {
+        get {
+          parameters("counters".as[Int], "updates".as[Int]) { (counters, updates) =>
+            (0 until counters).foreach(counter => {
+              system.actorOf(Props(classOf[Incrementor], counter.toString, updates, counterProxy))
+            })
+            complete(StatusCodes.OK)
+          }
+        }
+      },
+
+      path("single-counter-test") {
         get {
           parameters("counter".as[String], "updates".as[Int]) {
             (counter, updates) =>
@@ -75,6 +108,7 @@ object HttpApi {
           }
         }
       }
+    )
 
     Http().bindAndHandle(api, httpHost, httpPort).onComplete {
       case Success(_) => system.log.info("HTTP Server bound to http://{}:{}", httpHost, httpPort)

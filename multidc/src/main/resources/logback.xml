@@ -1,20 +1,36 @@
 <configuration>
-  <appender name="STDOUT" target="System.out" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder>
-      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{6} - %msg%n</pattern>
+    <appender name="STDOUT" target="System.out" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{6} - %msg%n</pattern>
+        </encoder>
+    </appender>
 
-    </encoder>
-  </appender>
 
-  <logger name="com.datastax.driver.core.QueryLogger.NORMAL" level="INFO"/>
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>entity.log</file>
+        <append>true</append>
+        <!-- set immediateFlush to false for much higher logging throughput -->
+        <immediateFlush>true</immediateFlush>
+        <!-- encoders are assigned the type
+             ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+        <encoder>
+            <pattern>%-4relative [%thread] %-5level %logger{35} - %msg%n</pattern>
+        </encoder>
+    </appender>
 
-  <logger name="com.datastax.driver.core.QueryLogger.ERROR" level="DEBUG" />
+    <logger name="com.datastax.driver.core.QueryLogger.NORMAL" level="INFO"/>
 
-  <logger name="com.datastax.driver.core.QueryLogger.SLOW" level="DEBUG"/>
+    <logger name="com.datastax.driver.core.QueryLogger.ERROR" level="DEBUG"/>
 
-  <logger name="com.datastax.driver.core.Connection" level="INFO" />
+    <logger name="com.datastax.driver.core.QueryLogger.SLOW" level="DEBUG"/>
 
-  <root level="DEBUG">
-    <appender-ref ref="STDOUT" />
-  </root>
+    <logger name="com.datastax.driver.core.Connection" level="INFO"/>
+
+    <root level="DEBUG">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+    <logger name="akka.event.DummyClassForStringSources" level="INFO">
+        <appender-ref ref="FILE"/>
+    </logger>
 </configuration>

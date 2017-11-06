@@ -5,7 +5,7 @@
         "port": 2551, 
         "roles": [], 
         "seed_nodes": [
-            "34.253.235.234"
+            "54.154.72.165"
         ], 
         "system_name": "MultiDcSystem"
     }, 
@@ -23,12 +23,12 @@
     }, 
     "cassandra": {
         "contact_points": [
-            "54.93.142.63"
+            "52.59.221.33"
         ]
     }, 
     "chef_environment": "_default", 
     "ipaddress": "172.31.17.21", 
-    "ipaddress-external": "52.59.226.71", 
+    "ipaddress-external": "52.59.241.114", 
     "ipaddress-internal": "172.31.17.21", 
     "java": {
         "jdk_version": 8, 
