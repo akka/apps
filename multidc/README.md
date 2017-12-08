@@ -10,6 +10,8 @@ Running multi dc tests has three stages, automating to varying degrees:
 
 Creation of the hosts is not automated (yet).
 
+Make sure you have the AWS CLI: `pip install awscli`.
+
 There exists akka nodes and cassandra nodes in ireland and frankfurt regions that can be cloned to expand the clsuter.
 
 After cloning update the node tag:
