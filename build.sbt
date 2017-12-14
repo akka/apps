@@ -64,7 +64,7 @@ lazy val multidc = project
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-persistence-cassandra"   % AkkaPersistenceCassandra,
-      "com.lightbend.akka"    %% "akka-persistence-multi-dc"    % AkkaCom,
+      "com.lightbend.akka"    %% "akka-persistence-multi-dc"    % AkkaCom from "file:///home/akka/akka-persistence-multi-dc_2.11.jar",
       "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
       "com.typesafe.akka"     %% "akka-distributed-data"        % Akka,
       "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,
