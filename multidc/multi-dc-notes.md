@@ -117,3 +117,502 @@ Next, switch to artery and repeat.
 3 cassandra nodes
 3 akka nodes
 
+# patriknw
+
+## 2017-12-14 21:00
+
+Long running test (8h), emitting 10 events every 10 seconds.
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1 Akka node
+
+Pre:
+
+```
+drop table akka.messages;
+drop table akka.metadata;
+drop table akka.messages_notification;
+drop table akka_snapshot.snapshots;
+```
+
+Run:
+
+```
+sbt -Dsbt.log.noformat=true "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log3.txt
+```
+
+```
+for i in {1..3000}; do
+  curl -v "localhost:8080/test?counters=1&updates=10"
+  sleep 10
+  curl "localhost:8080/counter?id=0"
+done
+```
+
+cat log3.txt | egrep "(ERROR|UNREACHABLE|growing)"
+
+**re-cassandra-euwest-1a**
+
+JMX 
+* Read  OneMinuteRate: 1.4 events/s
+* Write OneMinuteRate: 0.3 events/s
+
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 3464
+		Local read latency: NaN ms
+		Local write count: 58572
+		Local write latency: NaN ms
+		Table: messages_notification
+		Local read count: 67881
+		Local read latency: NaN ms
+		Local write count: 5639
+		Local write latency: NaN ms
+```
+
+select count(*) from akka.messages: 58572
+select count(*) from akka.messages_notification: 5639
+
+**re-cassandra-eucentral-1a**
+ 
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 9
+		Local read latency: NaN ms
+		Local write count: 58575
+		Local write latency: NaN ms
+		Table: messages_notification
+		Local read count: 60
+		Local read latency: NaN ms
+		Local write count: 5640
+		Local write latency: NaN ms
+```
+
+select count(*) from akka.messages: 58572
+select count(*) from akka.messages_notification: 5639
+
+**Issues**
+
+Couldn't create new keyspace. (log2.txt)
+
+```
+[info] 18:28:25.592 [MultiDcSystem-worker-0] WARN  c.d.d.c.Cluster - No schema agreement from live replicas after 10 s. The schema may not be up to date on some nodes.
+[info] 18:28:25.592 [MultiDcSystem-worker-2] DEBUG c.d.d.c.ControlConnection - [Control connection] Refreshing schema for akka2.messages_notification (TABLE)
+[info] 18:28:25.603 [MultiDcSystem-nio-worker-2] DEBUG c.d.d.c.RequestHandler - [2144489851-1] Doing retry 1 for query
+[info]       SELECT * FROM akka2.config
+[info]      at consistency null
+[info] 18:28:25.603 [MultiDcSystem-nio-worker-2] DEBUG c.d.d.c.RequestHandler - [2144489851-1] Error querying /34.242.227.97:9042 : com.datastax.driver.core.exceptions.UnavailableException: Not enough repli
+cas available for query at consistency LOCAL_ONE (1 required but only 0 alive)
+[info] 18:28:25.606 [MultiDcSystem-nio-worker-2] DEBUG c.d.d.c.Q.ERROR - [MultiDcSystem] [/34.242.227.97:9042] Query error after 2 ms: [0 bound values] SELECT * FROM akka2.config;
+[info] com.datastax.driver.core.exceptions.UnavailableException: Not enough replicas available for query at consistency LOCAL_ONE (1 required but only 0 alive)
+```
+
+Trying to register to coordinator.
+
+```
+[info] 07:02:13.770 [MultiDcSystem-akka.actor.default-dispatcher-11] WARN  a.c.s.ShardRegion - Trying to register to coordinator at [None], but no acknowledgement. Total [53400] buffered messages.
+```
+
+Probably because of speculative-replication = on, but no Akka node started in other DC.
+
+CoordinatedShutdown doesn't complete `Performing phase [cluster-sharding-shutdown-region]`, and it doesn't timeout.
+Could it be because of the proxies that couldn't register to other DC?
+
+ConfigChecker:
+akka.cluster.multi-data-center.speculative-replication.enabled is not an Akka configuration setting
+
+## 2017-12-15 10:40
+
+Just restarting the Akka node to verify replay of events from previous test.
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1 Akka node
+* speculative-replication = on
+
+Run:
+
+```
+sbt -Dsbt.log.noformat=true "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log4.txt
+```
+
+```
+curl -v "localhost:8080/test?counters=1&updates=1"
+
+curl "localhost:8080/counter?id=0"
+```
+
+All good. 72 "Replayed own replicated event"
+
+## 2017-12-15 11:00
+
+Updating one counter 1000 times from one side.
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = on
+
+Pre: drop tables
+
+Run:
+
+```
+sbt -Dsbt.log.noformat=true "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log6.txt
+```
+
+```
+curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1000"
+
+curl "localhost:8080/counter?id=pn1"
+```
+
+All good. Counter at 1000 on both sides.
+
+**re-cassandra-euwest-1a**
+
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 17
+		Local read latency: NaN ms
+		Local write count: 2000
+		Local write latency: 0.023 ms
+		Table: messages_notification
+		Local read count: 359
+		Local read latency: 0.031 ms
+		Local write count: 8
+		Local write latency: NaN ms
+```
+
+select count(*) from akka.messages: 2000
+select count(*) from akka.messages_notification: 8
+
+**re-cassandra-eucentral-1a**
+ 
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 13
+		Local read latency: NaN ms
+		Local write count: 2000
+		Local write latency: 0.023 ms
+		Table: messages_notification
+		Local read count: 336
+		Local read latency: 0.039 ms
+		Local write count: 8
+		Local write latency: NaN ms
+```
+
+select count(*) from akka.messages: 2000
+select count(*) from akka.messages_notification: 8
+
+## 2017-12-15 11:50
+
+Updating 3000 counters 2000 times from both sides.
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = off 
+
+Pre: drop tables
+
+
+Run:
+
+```
+sbt -Dsbt.log.noformat=true "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log7.txt
+```
+
+```
+curl -v "localhost:8080/test?counters=3000&updates=2000"
+```
+
+
+**re-cassandra-euwest-1a**
+
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 928258
+		Local read latency: 0.141 ms
+		Local write count: 9811004
+		Local write latency: 0.026 ms
+		Table: messages_notification
+		Local read count: 2624
+		Local read latency: 9.744 ms
+		Local write count: 10726
+		Local write latency: 0.023 ms
+```
+
+select count(*) from akka.messages: request timeout
+select count(*) from akka.messages_notification: 10726
+
+
+
+**re-cassandra-eucentral-1a**
+ 
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 564790
+		Local read latency: 1.811 ms
+		Local write count: 9810691
+		Local write latency: 0.022 ms
+		Table: messages_notification
+		Local read count: 827
+		Local read latency: 23.627 ms
+		Local write count: 10726
+		Local write latency: 0.021 ms
+```
+
+select count(*) from akka.messages: request timeout
+select count(*) from akka.messages_notification: 10726
+
+JMX Read and Write rate:
+
+![notes/jmx7.png](notes/jmx7.png)
+
+CPU euwest:
+
+![notes/cpu7w.png](notes/cpu7w.png)
+
+CPU eucentral:
+
+![notes/cpu7c.png](notes/cpu7c.png)
+
+**Issues**
+
+The counters were increased to around 2445. Expected 4000.
+
+Seems to be overloaded. No errors in logs.
+
+Many (7371) "Query too slow" in eucentral, none in euwest:
+
+```
+[info] 11:21:59.455 DEBUG [c.d.driver.core.QueryLogger.SLOW] [] - [MultiDcSystem] [/54.93.225.104:9042] Query too slow, took 5025 ms: [2 bound values] SELECT sequence_nr, used FROM akka.messages WHERE
+[info] 11:21:59.455 DEBUG [c.d.driver.core.QueryLogger.SLOW] [] - [MultiDcSystem] [/54.93.225.104:9042] Query too slow, took 5025 ms: [2 bound values] SELECT sequence_nr, used FROM akka.messages WHERE
+[info] 11:21:59.455 DEBUG [c.d.driver.core.QueryLogger.SLOW] [] - [MultiDcSystem] [/54.93.225.104:9042] Query too slow, took 5026 ms: [1 bound values] SELECT deleted_to FROM akka.metadata WHERE
+[info] 11:21:59.455 DEBUG [c.d.driver.core.QueryLogger.SLOW] [] - [MultiDcSystem] [/54.93.225.104:9042] Query too slow, took 5018 ms: [14 bound values] INSERT INTO akka.messages (persistence_id, partition_nr, sequence_nr, timestamp, timebucket, writer_uuid, ser_id, ser_manifest, event_manifest, event,
+[info] 11:21:59.455 DEBUG [c.d.driver.core.QueryLogger.SLOW] [] - [MultiDcSystem] [/54.93.225.104:9042] Query too slow, took 5023 ms: [2 bound values] SELECT sequence_nr, used FROM akka.messages WHERE
+[info] 11:21:59.455 DEBUG [c.d.driver.core.QueryLogger.SLOW] [] - [MultiDcSystem] [/54.93.225.104:9042] Query too slow, took 5018 ms: [14 bound values] INSERT INTO akka.messages (persistence_id, partition_nr, sequence_nr, timestamp, timebucket, writer_uuid, ser_id, ser_manifest, event_manifest, event,
+[info] 11:21:59.456 DEBUG [c.d.driver.core.QueryLogger.SLOW] [] - [MultiDcSystem] [/54.93.225.104:9042] Query too slow, took 5023 ms: [14 bound values] INSERT INTO akka.messages (persistence_id, partition_nr, sequence_nr, timestamp, timebucket, writer_uuid, ser_id, ser_manifest, event_manifest, event,
+[info] 11:21:59.456 DEBUG [c.d.driver.core.QueryLogger.SLOW] [] - [MultiDcSystem] [/54.93.225.104:9042] Query too slow, took 5017 ms: [14 bound values] INSERT INTO akka.messages (persistence_id, partition_nr, sequence_nr, timestamp, timebucket, writer_uuid, ser_id, ser_manifest, event_manifest, event,
+[info] 11:21:59.456 DEBUG [c.d.driver.core.QueryLogger.SLOW] [] - [MultiDcSystem] [/54.93.225.104:9042] Query too slow, took 5016 ms: [14 bound values] INSERT INTO akka.messages (persistence_id, partition_nr, sequence_nr, timestamp, timebucket, writer_uuid, ser_id, ser_manifest, event_manifest, event, 
+```
+
+## 2017-12-15 15:00
+
+Updating 500 counters 2000 times from both sides.
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = off 
+
+Pre: drop tables
+
+Run:
+
+```
+sbt -Dsbt.log.noformat=true -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log8.txt
+```
+
+```
+curl -v "localhost:8080/test?counters=500&updates=2000"
+```
+
+
+**re-cassandra-euwest-1a**
+
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 59768
+		Local read latency: 0.528 ms
+		Local write count: 4000179
+		Local write latency: 0.033 ms
+		Table: messages_notification
+		Local read count: 831
+		Local read latency: 0.597 ms
+		Local write count: 423
+		Local write latency: 0.025 ms
+```
+
+select count(*) from akka.messages: request timeout
+select count(*) from akka.messages_notification: 423
+
+**re-cassandra-eucentral-1a**
+ 
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 48137
+		Local read latency: 0.623 ms
+		Local write count: 4000157
+		Local write latency: 0.030 ms
+		Table: messages_notification
+		Local read count: 766
+		Local read latency: 0.910 ms
+		Local write count: 423
+		Local write latency: 0.023 ms
+```
+
+select count(*) from akka.messages: request timeout
+select count(*) from akka.messages_notification: 423
+
+JMX Read and Write rate:
+
+![notes/jmx8.png](notes/jmx8.png)
+
+CPU: ~ 50%
+
+All good. Counters ended at 4000.
+
+
+## 2017-12-15 15:20
+
+Updating 1000 counters 2000 times from both sides.
+Same as above.
+
+Run:
+
+```
+curl -v "localhost:8080/test?counters=1000&updates=2000"
+```
+
+All good. Counters ended at 4000.
+
+log10.txt
+
+![notes/jmx10.png](notes/jmx10.png)
+
+## 2017-12-15 16:00
+
+Updating 2000 counters 2000 times from both sides.
+Same as above.
+
+Run:
+
+```
+sbt -Dsbt.log.noformat=true -J-Xms4g -J-Xmx4g -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log8.txt
+```
+
+```
+curl -v "localhost:8080/test?counters=2000&updates=2000"
+```
+
+**re-cassandra-euwest-1a**
+
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 469834
+		Local read latency: 0.955 ms
+		Local write count: 16000477
+		Local write latency: 0.033 ms
+		Table: messages_notification
+		Local read count: 1807
+		Local read latency: 23.175 ms
+		Local write count: 16605
+		Local write latency: 0.039 ms
+```
+
+**re-cassandra-eucentral-1a**
+ 
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 552916
+		Local read latency: 2.069 ms
+		Local write count: 16000641
+		Local write latency: 0.039 ms
+		Table: messages_notification
+		Local read count: 1912
+		Local read latency: 24.510 ms
+		Local write count: 16605
+		Local write latency: 0.036 ms
+```
+
+At first some trouble with full disk on some Cassandra instances, and full heap on some Akka nodes.
+Increased heap size to 4G.
+ 
+All good. Counters ended at 4000.
+
+log12.txt
+
+![notes/jmx12.png](notes/jmx12.png)
+
+CPU: ~90 % on all nodes
+
+## 2017-12-15 16:50
+
+Updating 3000 counters 2000 times from both sides.
+Same as above.
+
+Run:
+
+```
+curl -v "localhost:8080/test?counters=3000&updates=2000"
+```
+
+![notes/jmx13.png](notes/jmx13.png)
+
+Issues:
+
+Seems overloaded
+
+CPU: ~85 % on Cassandra nodes
+CPU: ~95 % on Akka nodes
+
+
+```
+16:08:09.853 ERROR [a.p.m.internal.ReplicatedEntityActor] [MultiDcSystem-akka.actor.default-dispatcher-15] - [counter|1895|eu-west] [counter|1895|eu-west-replicationStream-eu-central] Upstream failed.
+akka.pattern.AskTimeoutException: Ask timed out on [Actor[akka://MultiDcSystem/system/sharding/counter/95/1895#-161095793]] after [30000 ms]. Sender[Actor[akka://MultiDcSystem/system/sharding/counter/95/1895
+#-161095793]] sent message of type "akka.persistence.multidc.internal.DirectlyReplicatedEventEnvelope".
+```
+
+```
+16:08:12.972 ERROR [a.p.m.internal.ReplicatedEntityActor] [MultiDcSystem-akka.actor.default-dispatcher-10] - Failed to persist event type [akka.persistence.multidc.ReplicatedEvent] with sequence number [2577
+] for persistenceId [counter|1801|eu-west].
+akka.pattern.CircuitBreaker$$anon$1: Circuit Breaker Timed out. 
+```
+
+```
+1334.898: [Full GC (Ergonomics) [PSYoungGen: 465920K->159176K(931840K)] [ParOldGen: 2796519K->2796392K(2796544K)] 3262439K->2955569K(3728384K), [Metaspace: 102652K->102652K(1136640K)], 5.8993515 secs] [Times: user=23.06 sys=0.00, real=5.90 secs]
+1341.104: [Full GC (Ergonomics) [PSYoungGen: 465920K->173968K(931840K)] [ParOldGen: 2796392K->2796175K(2796544K)] 3262312K->2970143K(3728384K), [Metaspace: 102660K->102660K(1136640K)], 5.9873093 secs] [Times: user=23.39 sys=0.00, real=5.99 secs]
+```
+
+```
+16:01:28.471 ERROR [a.r.a.ArteryTransport(akka://MultiDcSystem)] [MultiDcSystem-akka.actor.default-dispatcher-2] - Aeron error: 1 observations from 12/15/2017 16:01:10.024 to 12/15/2017 16:01:10.024 for:
+ java.net.SocketException: Message too long
+        at sun.nio.ch.DatagramChannelImpl.receive0(Native Method)
+        at sun.nio.ch.DatagramChannelImpl.receiveIntoNativeBuffer(DatagramChannelImpl.java:414)
+        at sun.nio.ch.DatagramChannelImpl.receive(DatagramChannelImpl.java:392)
+        at sun.nio.ch.DatagramChannelImpl.receive(DatagramChannelImpl.java:345)
+        at io.aeron.driver.media.UdpChannelTransport.receive(UdpChannelTransport.java:257)
+        at io.aeron.driver.media.ControlTransportPoller.poll(ControlTransportPoller.java:136)
+        at io.aeron.driver.media.ControlTransportPoller.pollTransports(ControlTransportPoller.java:78)
+        at io.aeron.driver.Sender.doWork(Sender.java:93)
+        at org.agrona.concurrent.CompositeAgent.doWork(CompositeAgent.java:79)
+        at org.agrona.concurrent.AgentRunner.run(AgentRunner.java:140)
+        at java.lang.Thread.run(Thread.java:748)
+```
+
+That is probably because I removed the forking and didn't run with `-Daeron.mtu.length=1024`
+
+https://github.com/akka/akka-persistence-cassandra/issues/295
