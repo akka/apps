@@ -616,3 +616,83 @@ akka.pattern.CircuitBreaker$$anon$1: Circuit Breaker Timed out.
 That is probably because I removed the forking and didn't run with `-Daeron.mtu.length=1024`
 
 https://github.com/akka/akka-persistence-cassandra/issues/295
+
+## 2017-12-15 17:30
+
+Long running
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = off
+
+Pre: drop tables
+
+Run:
+
+```
+sbt -Daeron.mtu.length=1024 -Dsbt.log.noformat=true -J-Xms4g -J-Xmx4g -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log14.txt
+```
+
+```
+#!/bin/bash
+
+for i in {1..9000}; do
+  curl -v "localhost:8080/test?counters=100&updates=10"
+  sleep 5
+done
+```
+
+Disk full on Cassandra instances re-cassandra-euwest-1b, re-cassandra-euwest-1a. Small volumes, 83G, other instances have 67G.
+Removed /var/lib/cassandra/* and restarted.
+
+The Akka node in euwest reconnected successfully but I stopped the nodes. 
+
+CPU: ~8 % on Cassandra nodes
+CPU: ~16 % on Akka nodes
+
+## 2017-12-16 10:30
+
+Long running, 46 hours.
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = off
+
+Pre: drop tables
+
+Run:
+
+```
+sbt -Daeron.mtu.length=1024 -Dsbt.log.noformat=true -J-Xms4g -J-Xmx4g -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log15.txt
+```
+
+```
+#!/bin/bash
+
+for i in {1..9000}; do
+  curl -v "localhost:8080/test?counters=10&updates=3"
+  sleep 10
+done
+```
+
+Counters were updated to expected values: 9000*3*2 = 54000
+
+Script was started again without restarting Akka and Cassandra nodes.
+
+All good. 
+
+CPU: ~1 % on Cassandra nodes
+CPU: ~10 % on Akka nodes
+
+
+## TODO
+
+* 2 DCs, 3*2 Cassandra nodes, 1*2 Akka nodes
+    * speculative-replication = on, compare reads with above 2017-12-15 11:00 and 2017-12-15 16:00
+    * Cassandra network partition, update counters on both sides, heal partition, try different number of counters and events,
+      also try the introspector instead of counter
+    * Cross reading, local-notification = off/on
+* 2 DCs, 3*2 Cassandra nodes, 3*2 Akka nodes
+    * try keep-alive and passivation
