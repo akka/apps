@@ -686,13 +686,327 @@ All good.
 CPU: ~1 % on Cassandra nodes
 CPU: ~10 % on Akka nodes
 
+## 2017-12-18 10:10
+
+speculative-replication, updating one counter 1000 times from one side.
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = on
+
+Pre: drop tables
+
+Run:
+
+```
+sbt -Daeron.mtu.length=1024 -Dsbt.log.noformat=true -J-Xms4g -J-Xmx4g -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log16.txt
+```
+
+```
+curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
+curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
+curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
+curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1000"
+
+curl "localhost:8080/counter?id=pn1"
+```
+
+Verified logs that keep-alive woke up the entity on other side.
+Verified logs that speculative events were received.
+
+All good. Counter at 1003 on both sides.
+
+Run same again with `speculative-replication = off` and verified:
+
+```
+cat log16b.txt |grep "Received replicated event"|wc -l
+1003
+
+cat log16.txt |grep "Received replicated event"|wc -l
+0
+```
+
+## 2017-12-18 10:30
+
+speculative-replication, updating 2000 counters 2000 times from one side.
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = on
+
+Pre: drop tables
+
+Run:
+
+```
+sbt -Daeron.mtu.length=1024 -Dsbt.log.noformat=true -J-Xms4g -J-Xmx4g -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log17.txt
+```
+
+```
+curl -v "localhost:8080/test?counters=2000&updates=2000"
+```
+
+**re-cassandra-euwest-1a**
+
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 1851944
+		Local read latency: 0.238 ms
+		Local write count: 8001728
+		Local write latency: 0.020 ms
+		Table: messages_notification
+		Local read count: 2859
+		Local read latency: 7.698 ms
+		Local write count: 8511
+		Local write latency: 0.030 ms
+```
+
+**re-cassandra-eucentral-1a**
+ 
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 212244
+		Local read latency: 0.187 ms
+		Local write count: 8000281
+		Local write latency: 0.021 ms
+		Table: messages_notification
+		Local read count: 3213
+		Local read latency: 9.251 ms
+		Local write count: 8511
+		Local write latency: 0.030 ms
+```
+
+**Issues**
+
+Too many reads.
+
+west:
+
+```
+cat log17.txt |grep "Received replicated event"|wc -l
+4000000
+
+cat log17.txt |grep "Received speculatively replicated event"|wc -l
+4000000
+```
+
+central:
+
+```
+cat log17.txt |grep "Received replicated event"|wc -l
+43138
+
+cat log17.txt |grep "Received speculatively replicated event"|wc -l
+3956862
+```
+
+It's because missing fastForward when receiving own speculative event.
+
+https://github.com/lightbend/akka-commercial-addons/issues/293
+
+## 2017-12-18 11:20
+
+Network partitions
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = on
+
+Pre: drop tables
+
+Run:
+
+```
+sbt -Daeron.mtu.length=1024 -Dsbt.log.noformat=true -J-Xms4g -J-Xmx4g -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log18.txt
+```
+
+```
+west: curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
+central: curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
+
+curl "localhost:8080/counter?id=pn1"
+2
+
+./network-split-cassandra.sh split
+
+west: curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
+
+# still works because speculative
+curl "localhost:8080/counter?id=pn1"
+3
+
+west: curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
+west: curl "localhost:8080/counter?id=pn1"
+4
+# as expected not replicated due to split
+central: curl "localhost:8080/counter?id=pn1"
+3
+
+./network-split-cassandra.sh heal
+
+central: curl "localhost:8080/counter?id=pn1"
+4
+
+./network-split-remoting.sh heal
+
+west: curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
+central: curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
+
+curl "localhost:8080/counter?id=pn1
+6
+```
+
+Similar with introspector, following commands in various combinations.
+
+```
+curl "localhost:8080/introspector/alpha/write/a1"
+curl "localhost:8080/introspector/alpha/write/a2"
+curl "localhost:8080/introspector/alpha"
+
+./network-split-cassandra.sh split
+./network-split-cassandra.sh heal
+./network-split-remoting.sh split
+./network-split-remoting.sh heal
+```
+
+All good!
+
+## 2017-12-19 07:15
+
+Cross reading with local-notification=on
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = off
+
+Pre: drop keyspaces
+
+```
+akka.persistence.multi-data-center {
+  cross-reading-replication {
+    enabled = on
+    local-notification = on
+
+    cassandra-journal {
+      eu-west {
+        contact-points = ["54.194.79.5"]
+      }
+      eu-central {
+        contact-points = ["35.158.122.93"]
+      }
+    }
+  }
+}
+```
+
+eu-west application.conf:
+ 
+```
+cassandra-journal-multi-dc {
+  contact-points = [
+    "54.194.79.5"
+  ]
+  local-datacenter = "eu-west"
+  log-queries = on
+  keyspace = "akka_west"
+  data-center-replication-factors = ["eu-west:3"]
+  
+  notification {
+    keyspace = "akka_notification"
+    replication-strategy = "NetworkTopologyStrategy"
+    data-center-replication-factors = ["eu-west:3", "eu-central:3"]
+  }
+}
+```
+
+eu-central application.conf:
+
+```
+cassandra-journal-multi-dc {
+  contact-points = [
+    "54.194.79.5"
+  ]
+  local-datacenter = "eu-central"
+  keyspace = "akka_central"
+  data-center-replication-factors = ["eu-central:3"]
+  
+  notification {
+    keyspace = "akka_notification"
+    replication-strategy = "NetworkTopologyStrategy"
+    data-center-replication-factors = ["eu-west:3", "eu-central:3"]
+  }
+}
+```
+
+Run:
+
+```
+sbt -Daeron.mtu.length=1024 -Dsbt.log.noformat=true -J-Xms4g -J-Xmx4g -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log19.txt
+```
+
+```
+curl "localhost:8080/single-counter-test?counter=pn1&updates=1"
+curl "localhost:8080/counter?id=pn1"
+
+select count(*) from akka_west.messages;
+select count(*) from akka_central.messages;
+select count(*) from akka_notification.messages_notification;
+select * from akka_notification.messages_notification;
+```
+
+Keyspaces `akka_west`, `akka_central` and `akka_notification` created as expected.
+
+Rows added to correct tables.
+
+Entity started by keep-alive in other DC as expected. 
+
+CassandraReplicatedEventQuery for cross reading created correctly:
+
+west:
+
+```
+06:09:28.641 DEBUG [a.p.m.i.CassandraReplicatedEventQuery] [MultiDcSystem-akka.actor.default-dispatcher-5] - Created [CassandraReplicatedEventQuery] for cross reading from DC [eu-central] with pluginId [cassandra-query-journal-multi-dc-0] using DC specific config [{
+    # /home/akka/multidc/application.conf: 67
+    "contact-points" : [
+        # /home/akka/multidc/application.conf: 67
+        "35.158.122.93"
+    ]
+}
+]
+```
+
+central:
+
+```
+06:14:37.650 DEBUG [a.p.m.i.CassandraReplicatedEventQuery] [MultiDcSystem-akka.actor.default-dispatcher-8] - Created [CassandraReplicatedEventQuery] for cross reading from DC [eu-west] with pluginId [cassandra-query-journal-multi-dc-1] using DC specific config [{
+    # /home/akka/multidc/application.conf: 65
+    "contact-points" : [
+        # /home/akka/multidc/application.conf: 65
+        "54.194.79.5"
+    ]
+}
+]
+```
+
+**Issues**
+
+Event written in west is not picked up by corresponding entity in central.
+
+Looks like Cassandra replicates the rows x-dc anyway?
+In re-cassandra-eucentral-1a: `select count(*) from akka_west.messages;` returns count 3, same as in `re-cassandra-euwest-1a`. 
+
 
 ## TODO
 
 * 2 DCs, 3*2 Cassandra nodes, 1*2 Akka nodes
-    * speculative-replication = on, compare reads with above 2017-12-15 11:00 and 2017-12-15 16:00
-    * Cassandra network partition, update counters on both sides, heal partition, try different number of counters and events,
-      also try the introspector instead of counter
     * Cross reading, local-notification = off/on
 * 2 DCs, 3*2 Cassandra nodes, 3*2 Akka nodes
     * try keep-alive and passivation
