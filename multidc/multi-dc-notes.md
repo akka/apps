@@ -712,7 +712,7 @@ curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1000"
 curl "localhost:8080/counter?id=pn1"
 ```
 
-Verified logs that keep-alive woke up the entity on other side.
+Verified logs that hot-standby woke up the entity on other side.
 Verified logs that speculative events were received.
 
 All good. Counter at 1003 on both sides.
@@ -890,6 +890,14 @@ Cross reading with local-notification=on
 Pre: drop keyspaces
 
 ```
+drop keyspace akka_notification;
+drop keyspace akka_west;
+drop keyspace akka_central;
+```
+
+Config:
+
+```
 akka.persistence.multi-data-center {
   cross-reading-replication {
     enabled = on
@@ -966,7 +974,7 @@ Keyspaces `akka_west`, `akka_central` and `akka_notification` created as expecte
 
 Rows added to correct tables.
 
-Entity started by keep-alive in other DC as expected. 
+Entity started by hot-standby in other DC as expected. 
 
 CassandraReplicatedEventQuery for cross reading created correctly:
 
@@ -1000,13 +1008,82 @@ central:
 
 Event written in west is not picked up by corresponding entity in central.
 
-Looks like Cassandra replicates the rows x-dc anyway?
-In re-cassandra-eucentral-1a: `select count(*) from akka_west.messages;` returns count 3, same as in `re-cassandra-euwest-1a`. 
+https://github.com/lightbend/akka-commercial-addons/issues/296
 
+## 2017-12-19 13:00
+
+Repeated above test after fixing #296.
+
+Some additional config was wrong. It should be:
+
+```
+akka.persistence.multi-data-center {
+  cross-reading-replication {
+    enabled = on
+    local-notification = on
+
+    cassandra-journal {
+      eu-west {
+        contact-points = ["eu-west-node1", "eu-west-node2"]
+        keyspace = "akka_west"
+        local-datacenter = "eu-west"
+        data-center-replication-factors = ["eu-west:3"]
+      }
+      eu-central {
+        contact-points = ["eu-central-node1", "eu-central-node2"]
+        keyspace = "akka_central"
+        local-datacenter = "eu-central"
+        data-center-replication-factors = ["eu-central:3"]
+      }
+    }
+  }
+}
+```
+
+eu-west application.conf:
+ 
+```
+cassandra-journal-multi-dc {
+  contact-points = [
+    "54.194.79.5"
+  ]
+  local-datacenter = "eu-west"
+  log-queries = on
+  keyspace = "akka_west"
+  data-center-replication-factors = ["eu-west:3"]
+  
+  notification {
+    keyspace = "akka_notification"
+    replication-strategy = "NetworkTopologyStrategy"
+    data-center-replication-factors = ["eu-west:3", "eu-central:3"]
+  }
+}
+```
+
+eu-central application.conf:
+
+```
+cassandra-journal-multi-dc {
+  contact-points = [
+    "54.194.79.5"
+  ]
+  local-datacenter = "eu-central"
+  keyspace = "akka_central"
+  data-center-replication-factors = ["eu-central:3"]
+  
+  notification {
+    keyspace = "akka_notification"
+    replication-strategy = "NetworkTopologyStrategy"
+    data-center-replication-factors = ["eu-west:3", "eu-central:3"]
+  }
+}
+```
+
+All good!
 
 ## TODO
 
 * 2 DCs, 3*2 Cassandra nodes, 1*2 Akka nodes
     * Cross reading, local-notification = off/on
 * 2 DCs, 3*2 Cassandra nodes, 3*2 Akka nodes
-    * try keep-alive and passivation
+    * try hot-standby and passivation
