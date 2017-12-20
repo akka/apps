@@ -381,15 +381,15 @@ select count(*) from akka.messages_notification: 10726
 
 JMX Read and Write rate:
 
-![notes/jmx7.png](notes/jmx7.png)
+![jmx7.png](jmx7.png)
 
 CPU euwest:
 
-![notes/cpu7w.png](notes/cpu7w.png)
+![cpu7w.png](cpu7w.png)
 
 CPU eucentral:
 
-![notes/cpu7c.png](notes/cpu7c.png)
+![cpu7c.png](cpu7c.png)
 
 **Issues**
 
@@ -475,7 +475,7 @@ select count(*) from akka.messages_notification: 423
 
 JMX Read and Write rate:
 
-![notes/jmx8.png](notes/jmx8.png)
+![jmx8.png](jmx8.png)
 
 CPU: ~ 50%
 
@@ -497,7 +497,7 @@ All good. Counters ended at 4000.
 
 log10.txt
 
-![notes/jmx10.png](notes/jmx10.png)
+![jmx10.png](jmx10.png)
 
 ## 2017-12-15 16:00
 
@@ -555,7 +555,7 @@ All good. Counters ended at 4000.
 
 log12.txt
 
-![notes/jmx12.png](notes/jmx12.png)
+![jmx12.png](jmx12.png)
 
 CPU: ~90 % on all nodes
 
@@ -570,7 +570,7 @@ Run:
 curl -v "localhost:8080/test?counters=3000&updates=2000"
 ```
 
-![notes/jmx13.png](notes/jmx13.png)
+![jmx13.png](jmx13.png)
 
 Issues:
 
@@ -1144,7 +1144,7 @@ nodetool cfstats akka_central.messages akka_notification.messages_notification -
 
 JMX Read and Write rate:
 
-![notes/jmx21.png](notes/jmx21.png)
+![jmx21.png](jmx21.png)
 
 CPU: ~30 % on Cassandra nodes
 CPU: ~50 % on Akka nodes
@@ -1271,7 +1271,7 @@ cat log28.txt | grep "Received speculatively replicated event" | wc -l
 1000000
 ```
 
-![notes/jmx28.png](notes/jmx28.png)
+![jmx28.png](jmx28.png)
 
 CPU: ~30 % on Cassandra nodes
 CPU: ~30 % on Akka node west, ~50 % on Akka node central 
@@ -1340,7 +1340,7 @@ nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: me
 
 read count 145793 vs 49001
 
-![notes/jmx29.png](notes/jmx29.png)
+![jmx29.png](jmx29.png)
 
 CPU: ~30 % on Cassandra nodes
 CPU: ~40 % on Akka nodes 
