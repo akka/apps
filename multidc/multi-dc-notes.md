@@ -859,7 +859,7 @@ central: curl "localhost:8080/counter?id=pn1"
 west: curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
 central: curl -v "localhost:8080/single-counter-test?counter=pn1&updates=1"
 
-curl "localhost:8080/counter?id=pn1
+curl "localhost:8080/counter?id=pn1"
 6
 ```
 
@@ -886,6 +886,7 @@ Cross reading with local-notification=on
 * 3*2 Cassandra nodes
 * 1*2 Akka nodes
 * speculative-replication = off
+* cross-reading.enabled = on, local-notification = on
 
 Pre: drop keyspaces
 
@@ -893,6 +894,7 @@ Pre: drop keyspaces
 drop keyspace akka_notification;
 drop keyspace akka_west;
 drop keyspace akka_central;
+drop keyspace akka_snapshot;
 ```
 
 Config:
@@ -1081,9 +1083,264 @@ cassandra-journal-multi-dc {
 
 All good!
 
-## TODO
+## 2017-12-20 11:00
 
-* 2 DCs, 3*2 Cassandra nodes, 1*2 Akka nodes
-    * Cross reading, local-notification = off/on
-* 2 DCs, 3*2 Cassandra nodes, 3*2 Akka nodes
-    * try hot-standby and passivation
+Cross reading with local-notification=on
+Updating 500 counters 2000 times from both sides.
+Compare with 2017-12-15 15:00
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = off 
+* cross-reading.enabled = on, local-notification = on
+
+Pre: drop keyspaces
+
+Run:
+
+```
+sbt -Daeron.mtu.length=1024 -Dsbt.log.noformat=true -J-Xms4g -J-Xmx4g -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log21.txt
+```
+
+```
+curl "localhost:8080/test?counters=500&updates=2000"
+```
+
+
+**re-cassandra-euwest-1a**
+
+nodetool cfstats akka_west.messages akka_notification.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 50192
+		Local read latency: 0.280 ms
+		Local write count: 2000030
+		Local write latency: 0.024 ms
+		Table: messages_notification
+		Local read count: 2113
+		Local read latency: 0.552 ms
+		Local write count: 342
+		Local write latency: 0.023 ms
+```
+
+**re-cassandra-eucentral-1a**
+ 
+nodetool cfstats akka_central.messages akka_notification.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages_notification
+		Local read count: 1688
+		Local read latency: 0.587 ms
+		Local write count: 342
+		Local write latency: NaN ms
+		Table: messages
+		Local read count: 49087
+		Local read latency: 0.282 ms
+		Local write count: 2000039
+		Local write latency: 0.023 ms
+```
+
+JMX Read and Write rate:
+
+![notes/jmx21.png](notes/jmx21.png)
+
+CPU: ~30 % on Cassandra nodes
+CPU: ~50 % on Akka nodes
+
+All good. Counters ended at 4000.
+
+## 2017-12-20 11:00
+
+Also tried same test as above with 2000 counters 2000 times from both sides.
+
+CPU: ~60 % on Cassandra nodes
+CPU: ~90 % on Akka nodes
+
+Also tried same test as above with 3000 counters 2000 times from both sides.
+It didn't finish completely on central.
+
+CPU: ~60 % on Cassandra nodes
+CPU: ~90 % on Akka nodes
+
+## 2017-12-20 14:15
+
+Cross reading with local-notification=off
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = off
+* cross-reading.enabled = on, local-notification = off
+
+Pre: drop keyspaces
+
+Run:
+
+```
+curl "localhost:8080/single-counter-test?counter=pn1&updates=1"
+curl "localhost:8080/counter?id=pn1"
+
+select count(*) from akka_west.messages;
+select count(*) from akka_central.messages;
+select * from akka_west.messages_notification;
+select * from akka_central.messages_notification;
+```
+
+All good
+
+## 2017-12-20 16:30
+
+speculative-replication, updating 1000 counters 1000 times from one side.
+Retesting after fixed issue #293
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = on
+* cross-reading.enabled = off
+
+Pre: drop tables
+
+Run:
+
+```
+sbt -Daeron.mtu.length=1024 -Dsbt.log.noformat=true -J-Xms4g -J-Xmx4g -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log28.txt
+```
+
+in west:
+
+```
+curl -v "localhost:8080/test?counters=1000&updates=1000"
+```
+
+**re-cassandra-euwest-1a**
+
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 40694
+		Local read latency: 0.135 ms
+		Local write count: 2000197
+		Local write latency: 0.032 ms
+		Table: messages_notification
+		Local read count: 1052
+		Local read latency: 3.835 ms
+		Local write count: 1664
+		Local write latency: 0.036 ms
+
+```
+
+**re-cassandra-eucentral-1a**
+ 
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 49001
+		Local read latency: 0.190 ms
+		Local write count: 2000182
+		Local write latency: 0.029 ms
+		Table: messages_notification
+		Local read count: 1151
+		Local read latency: 4.091 ms
+		Local write count: 1664
+		Local write latency: 0.033 ms
+```
+
+
+central:
+
+```
+cat log28.txt | grep "Received replicated event" | wc -l
+26343
+
+cat log28.txt | grep "Received speculatively replicated event" | wc -l
+973657
+```
+
+west:
+
+```
+cat log28.txt | grep "Received replicated event" | wc -l
+50075
+
+cat log28.txt | grep "Received speculatively replicated event" | wc -l
+1000000
+```
+
+![notes/jmx28.png](notes/jmx28.png)
+
+CPU: ~30 % on Cassandra nodes
+CPU: ~30 % on Akka node west, ~50 % on Akka node central 
+
+## 2017-12-20 17:20
+
+Same as above but with speculative-replication disabled. 
+speculative-replication, updating 1000 counters 1000 times from one side.
+Retesting after fixed issue #293
+
+* 2 DCs
+* 3*2 Cassandra nodes
+* 1*2 Akka nodes
+* speculative-replication = off
+* cross-reading.enabled = off
+
+Pre: drop tables
+
+Run:
+
+```
+sbt -Daeron.mtu.length=1024 -Dsbt.log.noformat=true -J-Xms4g -J-Xmx4g -J-XX:+PrintGCDetails -J-XX:+PrintGCTimeStamps "multidc/runMain com.lightbend.multidc.ReplicatedEntityApp" > log29.txt
+```
+
+in west:
+
+```
+curl -v "localhost:8080/test?counters=1000&updates=1000"
+```
+
+**re-cassandra-euwest-1a**
+
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 237696
+		Local read latency: 0.363 ms
+		Local write count: 2001383
+		Local write latency: 0.037 ms
+		Table: messages_notification
+		Local read count: 388
+		Local read latency: 3.740 ms
+		Local write count: 1552
+		Local write latency: 0.036 ms
+```
+
+read count 237696 vs 40694
+
+**re-cassandra-eucentral-1a**
+ 
+nodetool cfstats akka.messages akka.messages_notification -H | egrep "(Table: messages|Local read|Local write)"
+
+```
+		Table: messages
+		Local read count: 145793
+		Local read latency: 0.424 ms
+		Local write count: 2000789
+		Local write latency: 0.033 ms
+		Table: messages_notification
+		Local read count: 455
+		Local read latency: 2.486 ms
+		Local write count: 1551
+		Local write latency: 0.034 ms
+```
+
+read count 145793 vs 49001
+
+![notes/jmx29.png](notes/jmx29.png)
+
+CPU: ~30 % on Cassandra nodes
+CPU: ~40 % on Akka nodes 
