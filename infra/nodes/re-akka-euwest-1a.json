@@ -1,45 +1,36 @@
 {
-    "akka": {
-        "dc": "eu-west", 
-        "min_nodes": 2, 
-        "port": 2551, 
-        "roles": [], 
-        "seed_nodes": [
-            "54.154.72.165"
-        ], 
-        "system_name": "MultiDcSystem"
-    }, 
-    "authorization": {
-        "sudo": {
-            "passwordless": "true", 
-            "users": [
-                "akka", 
-                "ubuntu", 
-                "ktoso", 
-                "patriknw", 
-                "chbatey"
-            ]
-        }
-    }, 
-    "cassandra": {
-        "contact_points": [
-            "176.34.145.253"
-        ]
-    }, 
     "chef_environment": "_default", 
-    "ipaddress": "172.31.24.65", 
-    "ipaddress-external": "34.240.43.90", 
-    "ipaddress-internal": "172.31.24.65", 
+    "ipaddress-internal": "172.31.24.65",
+    "ipaddress-external": "54.171.108.87",
+    "name": "re-akka-euwest-1a",
+    
+    "akka": {
+      "system_name": "MultiDcSystem",
+      "port": 2551,
+      "roles": [],
+      "seed_nodes": ["None"],
+      "min_nodes": 2,
+      "dc": ""
+    },
+    "cassandra": {
+      "contact_points": ["34.242.227.97"]
+    },
+    "authorization": {
+      "sudo": {
+        "users": ["akka", "ubuntu", "ktoso", "patriknw", "chbatey"],
+        "passwordless": "true"
+      }
+    },
+    
     "java": {
-        "jdk_version": 8, 
-        "oracle": {
-            "accept_oracle_download_terms": true
-        }, 
-        "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
-    }, 
-    "name": "re-akka-euwest-1a", 
+      "jdk_version": 8,
+      "oracle": {
+        "accept_oracle_download_terms": true
+      },
+      "url": "http://download.oracle.com/otn-pub/java/jdk/8u112-b15/server-jre-8u112-linux-x64.tar.gz"
+    },
     "run_list": [
-        "role[benchmark]", 
-        "role[akka-re]"
+       "role[benchmark]",
+       "role[akka-re]"
     ]
 }
