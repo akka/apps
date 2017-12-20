@@ -2,7 +2,7 @@ val Akka = "2.5.8"
 val AkkaHttp = "10.0.10"
 val AkkaCom = "1.1-M5"
 val AkkaClusterManagement = "0.5"
-val AkkaPersistenceCassandra = "0.80-RC2"
+val AkkaPersistenceCassandra = "0.80-RC3"
 val KryoVersion = "0.5.0"
 val HdrHistogramVersion = "2.1.9"
 
