@@ -11,11 +11,11 @@
             "snitch": "Ec2MultiRegionSnitch"
         }, 
         "install_java": false, 
-        "seed_node": "176.34.145.253"
+        "seed_node": "34.242.227.97"
     }, 
     "chef_environment": "_default", 
     "ipaddress": "172.31.14.182", 
-    "ipaddress-external": "52.59.221.33", 
+    "ipaddress-external": "35.158.122.93", 
     "ipaddress-internal": "172.31.14.182", 
     "java": {
         "jdk_version": 8, 

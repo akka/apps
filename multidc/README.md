@@ -6,6 +6,18 @@ Running multi dc tests has three stages, automating to varying degrees:
 * AWS infra
 * Running the test
 
+## Local installation (prerequisite)
+
+* aws cli
+    * `pip install awscli`
+    * `aws configure`
+* fix (littlechef)
+    * https://github.com/akka/apps/tree/master/infra
+    * [virtualenv](https://virtualenv.pypa.io/en/stable/): `pip install virtualenv`
+    * gem install berkshelf
+* in case you see [xargs issue](https://superuser.com/questions/467176/replacement-for-xargs-d-in-osx) on OSX when running `fix` later you need to `brew install findutils` and `export PATH="/usr/local/opt/findutils/libexec/gnubin:$PATH”`
+* copy rsa files from Keybase to site-cookbooks/akka-user/files/default/
+
 ## AWS infra
 
 Creation of the hosts is not automated (yet).
@@ -17,8 +29,10 @@ There exists akka nodes and cassandra nodes in ireland and frankfurt regions tha
 After cloning update the node tag:
 * e.g. re-akka-eucentral-1a update the number and have the letter be the availability zone, this needs to be unique
 
-Use `infra/make-re-nodes-from-aws.sh` to generate the chef node files. It relies on tags so if you create
-new nodes without copying then add the role, name and purpose tags.
+Use `infra/make-re-node-files-from-aws.sh` to generate the chef node files. This should also be done when instances are restarted because they will have new IPs. 
+Make sure to run it for both regions, eu-central-1 and eu-west-1 for example (edit the file and run it again).
+
+It relies on tags so if you create new nodes without copying then add the role, name and purpose tags.
 
 I think if we add another region or want bigger clusters we should automate the creation of the nodes with chef or cli/shell.
 
@@ -44,6 +58,8 @@ Host re-cassandra-eucentral-1a re-cassandra-eucentral-1b re-cassandra-eucentral-
      IdentityFile ~/.ssh/re-central.pem
 
 ```
+
+With that in place and updated /etc/hosts you should be able to `ssh re-akka-euwest-1a`, `ssh re-akka-eucentral-1a`, `ssh re-cassandra-euwest-1a` and similar.
 
 If you shut down the nodes (do that they are expensive) then AWS will give them new IPs so you'll need to re-do the above steps.
 

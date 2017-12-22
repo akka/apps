@@ -8,9 +8,10 @@ assemblyMergeStrategy in assembly := {
     oldStrategy(x)
 }
 
+/*
 fork in run := true
 
 javaOptions in run ++= Seq(
   "-Daeron.mtu.length=1024"
 )
-
+*/

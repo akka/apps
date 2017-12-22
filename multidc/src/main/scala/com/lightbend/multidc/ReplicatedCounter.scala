@@ -17,6 +17,7 @@
 package com.lightbend.multidc
 
 import akka.persistence.multidc.scaladsl._
+import akka.persistence.multidc.crdt.Counter
 import akka.actor.Props
 import akka.persistence.multidc.PersistenceMultiDcSettings
 import akka.cluster.sharding.ShardRegion
@@ -35,10 +36,10 @@ object ReplicatedCounter {
   case object IncrementAck
 
   def props(settings: PersistenceMultiDcSettings): Props =
-    ReplicatedEntity.props("", Some("counter"), () => new ReplicatedCounter, settings)
+    ReplicatedEntity.props("", "counter", () => new ReplicatedCounter, settings)
 
   def shardingProps(settings: PersistenceMultiDcSettings): Props =
-    ReplicatedEntity.props(ShardingTypeName, None, () => new ReplicatedCounter, settings)
+    ReplicatedEntity.clusterShardingProps(ShardingTypeName, () => new ReplicatedCounter, settings)
 
   val ShardingTypeName = "counter"
 
@@ -63,19 +64,19 @@ class ReplicatedCounter extends ReplicatedEntity[ReplicatedCounter.Command, Repl
 
   override def initialState: Counter = Counter.empty
 
-  override def applyEvent(event: Event, state: Counter): Counter = event match {
-    case Incremented(delta, _) => state.applyEvent(Counter.Updated(delta))
+  override def eventHandler(state: Counter, event: Event): Counter = event match {
+    case Incremented(delta, _) => state.applyOperation(Counter.Updated(delta))
   }
 
   override def commandHandler: CommandHandler = {
     CommandHandler {
-      case (Increment(note), state, ctx) =>
+      case (ctx, state, Increment(note)) =>
         Effect.persist(Incremented(1, note)).andThen { _ =>
           ctx.sender() ! IncrementAck
         }
-      case (Get, state, ctx) =>
+      case (ctx, state, Get) =>
         ctx.sender() ! state.value.intValue
-        Effect.done
+        Effect.none
     }
   }
 }

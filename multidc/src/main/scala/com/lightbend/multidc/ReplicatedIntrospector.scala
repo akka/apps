@@ -55,10 +55,10 @@ object ReplicatedIntrospector {
   final case class AllState(events: List[Event])
 
   def props(system: ActorSystem, settings: PersistenceMultiDcSettings): Props =
-    ReplicatedEntity.props("", Some("introspector"), () => new ReplicatedIntrospector(system), settings)
+    ReplicatedEntity.props("", "introspector", () => new ReplicatedIntrospector(system), settings)
 
   def shardingProps(system: ActorSystem, settings: PersistenceMultiDcSettings): Props =
-    ReplicatedEntity.props(ShardingTypeName, None, () => new ReplicatedIntrospector(system), settings)
+    ReplicatedEntity.clusterShardingProps(ShardingTypeName, () => new ReplicatedIntrospector(system), settings)
 
   val ShardingTypeName = "introspector"
 
@@ -82,26 +82,21 @@ object ReplicatedIntrospector {
 
 class ReplicatedIntrospector(system: ActorSystem) extends ReplicatedEntity[Command, Event, Vector[Event]] {
 
-  lazy val log = Logging(system, entityId)
-
   override def initialState: Vector[Event] = Vector.empty
 
-  override def recoveryCompleted(state: Vector[Event], ctx: ActorContext) = {
+  override def recoveryCompleted(ctx: ActorContext, state: Vector[Event]) = {
     log.info("Recovery complete: " + state)
-
-    state
+    Effect.none
   }
 
-  override def detectConcurrentUpdates: Boolean = true
-
   override def commandHandler = CommandHandler {
-    case (i: Inspect, state, ctx) ⇒
+    case (ctx, state, i: Inspect) ⇒
       log.info("Inspect arrived; all state: " + AllState(state.toList))
       val replyTo = ctx.sender()
       replyTo ! AllState(state.toList)
-      Effect.done
+      Effect.none
 
-    case (a @ Append(_, payload), state, ctx) ⇒
+    case (ctx, state, a @ Append(_, payload)) ⇒
       log.info(s"$a arrived;")
       val replyTo = ctx.sender()
       Effect.persist(Stored(a, selfDc)).andThen(x ⇒ {
@@ -112,21 +107,19 @@ class ReplicatedIntrospector(system: ActorSystem) extends ReplicatedEntity[Comma
 
 
 
-  override def applySelfEvent(event: Event, state: Vector[Event], ctx: SelfEventContext): Vector[Event] = {
-    // TODO would be nice if ctx had a logger
+  override def selfEventHandler(ctx: SelfEventContext, state: Vector[Event], event: Event): Vector[Event] = {
     log.info("Applying self event: " + event)
     val s = state :+ AppliedSelf(event, currentTimeMillis(), selfDc)
     log.info("     State so far: : " + s)
     s
   }
 
-  override def applyReplicatedEvent(event: Event, state: Vector[Event], ctx: ReplicatedEventContext): Vector[Event] = {
-    // TODO would be nice if ctx had a logger
+  override def replicatedEventHandler(ctx: ReplicatedEventContext, state: Vector[Event], event: Event): Vector[Event] = {
     log.info("Applying replicated event: " + event)
     val s = state :+ AppliedReplicated(event, currentTimeMillis(), selfDc, ctx.concurrent, ctx.originDc, ctx.sequenceNr, ctx.timestamp)
     log.info("     State so far: : " + s)
     s
   }
 
-  override def applyEvent(event: Event, state: Vector[Event]): Vector[Event] = ???
+  override def eventHandler(state: Vector[Event], event: Event): Vector[Event] = ???
 }
