@@ -1,6 +1,6 @@
 val Akka = "2.5.8"
 val AkkaHttp = "10.0.10"
-val AkkaCom = "1.1-M5"
+val AkkaCom = "1.1.0-RC1"
 val AkkaClusterManagement = "0.5"
 val AkkaPersistenceCassandra = "0.80-RC3"
 val KryoVersion = "0.5.0"
@@ -64,7 +64,7 @@ lazy val multidc = project
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.akka"     %% "akka-persistence-cassandra"   % AkkaPersistenceCassandra,
-      "com.lightbend.akka"    %% "akka-persistence-multi-dc"    % AkkaCom from "file:///home/akka/akka-persistence-multi-dc_2.11.jar",
+      "com.lightbend.akka"    %% "akka-persistence-multi-dc"    % AkkaCom, //from "file:///home/akka/akka-persistence-multi-dc_2.11.jar",
       "com.typesafe.akka"     %% "akka-cluster-sharding"        % Akka,
       "com.typesafe.akka"     %% "akka-distributed-data"        % Akka,
       "com.lightbend.akka"    %% "akka-split-brain-resolver"    % AkkaCom,

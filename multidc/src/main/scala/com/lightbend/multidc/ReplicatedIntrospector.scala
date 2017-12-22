@@ -84,8 +84,9 @@ class ReplicatedIntrospector(system: ActorSystem) extends ReplicatedEntity[Comma
 
   override def initialState: Vector[Event] = Vector.empty
 
-  override def recoveryCompleted(ctx: ActorContext, state: Vector[Event]): Unit = {
+  override def recoveryCompleted(ctx: ActorContext, state: Vector[Event]) = {
     log.info("Recovery complete: " + state)
+    Effect.none
   }
 
   override def commandHandler = CommandHandler {
